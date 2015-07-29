@@ -29,16 +29,16 @@ function CLet4Def:InitGameMode()
 	GameRules:SetPreGameTime(0)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
-	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
-	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	self.secondsPassed = 0
 	self.spawnedList = {}
 	self.king = nil
 	self.spawnedBots = false
 	self.towerExtraBounty = 2500
-	self.xpPerSecond = 17
-	self.timeLimit = 20*60
-	self.weakenessTime = 30
+	self.xpPerSecond = 18	-- level 20 in 20 minutes
+	self.timeLimit = 20*60 -- 20 minutes game length
+	self.weakenessDuration = 30 -- 30 seconds of weakness
+	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
+	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 end
 
 -- Evaluate the state of the game
@@ -61,7 +61,7 @@ function CLet4Def:DoOncePerSecond()
 	if self.secondsPassed >= self.timeLimit then
 		GameRules:SetGameWinner(DOTA_TEAM_GOODGUYS)
 	end
-	-- give everyone some xp, enough to reach level 20 in 20 minutes
+	-- give everyone some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
 	heroCount = 0
 	for _, hero in pairs( allHeroes ) do
@@ -71,7 +71,7 @@ function CLet4Def:DoOncePerSecond()
 	-- re-apply weakness on dire units for the specified duration
 	for unit, i in pairs(self.spawnedList) do
 		self.spawnedList[unit] = self.spawnedList[unit] + 1
-		if unit:IsNull() or self.spawnedList[unit] > self.weakenessTime then
+		if unit:IsNull() or self.spawnedList[unit] > self.weakenessDuration then
 			self.spawnedList[unit] = nil
 		end
 		if unit:GetHealth() > unit:GetMaxHealth()/10 then
