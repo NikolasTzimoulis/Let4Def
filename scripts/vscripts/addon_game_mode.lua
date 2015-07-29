@@ -38,7 +38,7 @@ function CLet4Def:InitGameMode()
 	self.towerExtraBounty = 2500
 	self.xpPerSecond = 17
 	self.timeLimit = 20*60
-	self.weakenessTime = 15
+	self.weakenessTime = 30
 end
 
 -- Evaluate the state of the game
