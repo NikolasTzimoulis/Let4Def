@@ -1,0 +1,4 @@
+ReplaceHeroWith
+ModifyGold
+SetMaximumGoldBounty
+SetUseBaseGoldBountyOnHeroes
