@@ -32,11 +32,13 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	self.secondsPassed = 0
+	self.spawnedList = {}
 	self.king = nil
 	self.spawnedBots = false
 	self.towerExtraBounty = 2500
 	self.xpPerSecond = 17
 	self.timeLimit = 20*60
+	self.weakenessTime = 15
 end
 
 -- Evaluate the state of the game
@@ -66,6 +68,16 @@ function CLet4Def:DoOncePerSecond()
 		hero:AddExperience(self.xpPerSecond, false, true)
 		heroCount = heroCount + 1
 	end
+	-- re-apply weakness on dire units for the specified duration
+	for unit, i in pairs(self.spawnedList) do
+		self.spawnedList[unit] = self.spawnedList[unit] + 1
+		if unit:IsNull() or self.spawnedList[unit] > self.weakenessTime then
+			self.spawnedList[unit] = nil
+		end
+		if unit:GetHealth() > unit:GetMaxHealth()/10 then
+			unit:SetHealth(unit:GetMaxHealth()/10)
+		end
+	end
 	--spawn controllable bots if there are not enough people
 	if (not self.spawnedBots and heroCount < 5) then
 		SendToServerConsole("dota_bot_populate")
@@ -92,10 +104,11 @@ function CLet4Def:OnNPCSpawned( event )
 	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king then
 		-- Make dire units weaker than normal (use timer)
-		--spawnedUnit:SetHealth(spawnedUnit:GetMaxHealth()/10)
+		self.spawnedList[spawnedUnit] = 0
+		spawnedUnit:SetHealth(spawnedUnit:GetMaxHealth()/10)
 		--spawnedUnit:SetBaseMoveSpeed(spawnedUnit:GetBaseMoveSpeed()/4)
 		--spawnedUnit:SetBaseAttackTime(spawnedUnit:GetBaseAttackTime()*4)
-		spawnedUnit:SetBaseHealthRegen(spawnedUnit:GetBaseHealthRegen()-spawnedUnit:GetMaxHealth()/75)
+		--spawnedUnit:SetBaseHealthRegen(spawnedUnit:GetBaseHealthRegen()-spawnedUnit:GetMaxHealth()/75)
 		-- Increase gold bounty of dire units
 		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*2)
 		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*2)		
