@@ -73,8 +73,7 @@ function CLet4Def:DoOncePerSecond()
 		self.spawnedList[unit] = self.spawnedList[unit] + 1
 		if unit:IsNull() or self.spawnedList[unit] > self.weakenessDuration then
 			self.spawnedList[unit] = nil
-		end
-		if unit:GetHealth() > unit:GetMaxHealth()/10 then
+		elseif unit:GetHealth() > unit:GetMaxHealth()/10 then
 			unit:SetHealth(unit:GetMaxHealth()/10)
 		end
 	end
