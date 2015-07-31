@@ -34,7 +34,7 @@ function CLet4Def:InitGameMode()
 	self.king = nil
 	self.spawnedBots = false
 	self.towerExtraBounty = 2500
-	self.xpPerSecond = 18	-- level 20 in 20 minutes
+	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
 	self.weakenessDuration = 30 -- 30 seconds of weakness
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
