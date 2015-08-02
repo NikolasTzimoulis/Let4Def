@@ -36,7 +36,7 @@ function CLet4Def:InitGameMode()
 	self.towerExtraBounty = 2500
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
-	self.weakenessDuration = 30 -- 30 seconds of weakness
+	self.weaknessDistance = 2000 -- how close to the king a unit must be to not suffer from weakness
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 end
@@ -68,12 +68,12 @@ function CLet4Def:DoOncePerSecond()
 		hero:AddExperience(self.xpPerSecond, false, true)
 		heroCount = heroCount + 1
 	end
-	-- re-apply weakness on dire units for the specified duration
+	-- re-apply weakness on dire units if needed
 	for unit, i in pairs(self.spawnedList) do
 		self.spawnedList[unit] = self.spawnedList[unit] + 1
-		if unit:IsNull() or self.spawnedList[unit] > self.weakenessDuration then
+		if unit:IsNull() then
 			self.spawnedList[unit] = nil
-		elseif unit:GetHealth() > unit:GetMaxHealth()/10 then
+		elseif unit:GetHealth() > unit:GetMaxHealth()/10 and self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
 			unit:SetHealth(unit:GetMaxHealth()/10)
 		end
 	end
@@ -104,7 +104,7 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king then
 		-- Make dire units weaker than normal (use timer)
 		self.spawnedList[spawnedUnit] = 0
-		spawnedUnit:SetHealth(spawnedUnit:GetMaxHealth()/10)
+		--spawnedUnit:SetHealth(spawnedUnit:GetMaxHealth()/10)
 		--spawnedUnit:SetBaseMoveSpeed(spawnedUnit:GetBaseMoveSpeed()/4)
 		--spawnedUnit:SetBaseAttackTime(spawnedUnit:GetBaseAttackTime()*4)
 		--spawnedUnit:SetBaseHealthRegen(spawnedUnit:GetBaseHealthRegen()-spawnedUnit:GetMaxHealth()/75)
@@ -114,6 +114,7 @@ function CLet4Def:OnNPCSpawned( event )
 		-- Give full control of neutral units to dire
 		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS and self.king ~= nil then
 			spawnedUnit:SetTeam(DOTA_TEAM_BADGUYS)
+			spawnedUnit:SetOwner(self.king)
 			spawnedUnit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)		
 		end		
 	end
