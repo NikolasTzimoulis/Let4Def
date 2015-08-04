@@ -33,10 +33,12 @@ function CLet4Def:InitGameMode()
 	self.spawnedList = {}
 	self.king = nil
 	self.spawnedBots = false
-	self.towerExtraBounty = 2500
+	self.towerExtraBounty = 5000
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
-	self.weaknessDistance = 2000 -- how close to the king a unit must be to not suffer from weakness
+	self.weaknessDistance = 3000 -- how close to the king a unit must be to not suffer from weakness
+	self.weaknessMultiplier = 0.2 -- how much dire unit life should be reduced
+	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 end
@@ -73,8 +75,8 @@ function CLet4Def:DoOncePerSecond()
 		self.spawnedList[unit] = self.spawnedList[unit] + 1
 		if unit:IsNull() then
 			self.spawnedList[unit] = nil
-		elseif unit:GetHealth() > unit:GetMaxHealth()/10 and self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
-			unit:SetHealth(unit:GetMaxHealth()/10)
+		elseif unit:GetHealth() > self.weaknessMultiplier*unit:GetMaxHealth() and self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
+			unit:SetHealth(self.weaknessMultiplier*unit:GetMaxHealth())
 		end
 	end
 	--spawn controllable bots if there are not enough people
@@ -102,15 +104,11 @@ function CLet4Def:OnNPCSpawned( event )
 	spawnedUnit:SetDeathXP(0)
 	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king then
-		-- Make dire units weaker than normal (use timer)
+		-- Make dire units weaker than normal (put them on a list and use timer to re-apply weakness)
 		self.spawnedList[spawnedUnit] = 0
-		--spawnedUnit:SetHealth(spawnedUnit:GetMaxHealth()/10)
-		--spawnedUnit:SetBaseMoveSpeed(spawnedUnit:GetBaseMoveSpeed()/4)
-		--spawnedUnit:SetBaseAttackTime(spawnedUnit:GetBaseAttackTime()*4)
-		--spawnedUnit:SetBaseHealthRegen(spawnedUnit:GetBaseHealthRegen()-spawnedUnit:GetMaxHealth()/75)
 		-- Increase gold bounty of dire units
-		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*2)
-		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*2)		
+		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
+		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
 		-- Give full control of neutral units to dire
 		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS and self.king ~= nil then
 			spawnedUnit:SetTeam(DOTA_TEAM_BADGUYS)
