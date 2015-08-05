@@ -49,7 +49,7 @@ end
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
-		if GameRules:GetDOTATime(false, false) > self.secondsPassed then
+		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
 		end
