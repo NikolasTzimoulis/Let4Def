@@ -41,6 +41,10 @@ function CLet4Def:InitGameMode()
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
+	self.radiantTips = {"radiant_tip_1", "radiant_tip_2", "radiant_tip_3", "radiant_tip_4", "radiant_tip_5", "radiant_tip_6", "radiant_tip_7"}
+	self.sizeTipsRadiant = 7
+	self.direTips = {"dire_tip_1", "dire_tip_2", "dire_tip_3", "dire_tip_4", "dire_tip_5", "dire_tip_6", "dire_tip_7", "dire_tip_8"}
+	self.sizeTipsDire = 8
 end
 
 -- Evaluate the state of the game
@@ -89,12 +93,19 @@ end
 -- Every time an npc is spawned do this:
 function CLet4Def:OnNPCSpawned( event )
 	local spawnedUnit = EntIndexToHScript( event.entindex )
-	-- Get dire hero to level 25
-	if (spawnedUnit:IsRealHero() and spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS) then
-		for _ = 1, 24 do
-			spawnedUnit:HeroLevelUp(false)
+	if spawnedUnit:IsRealHero() then
+		-- Get dire hero to level 25
+		if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
+			for _ = 1, 24 do
+				spawnedUnit:HeroLevelUp(false)
+			end
+			-- remember dire hero since we need this information elsewhere
+			self.king = spawnedUnit
+			-- tip for dire
+			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+		else -- tip for radiant
+			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
-		self.king = spawnedUnit
 	end
 	-- Remove radiant creeps from the game
 	if (spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_melee" or spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_ranged" or spawnedUnit:GetUnitName() == "npc_dota_goodguys_siege") then
