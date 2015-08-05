@@ -25,15 +25,14 @@ function CLet4Def:InitGameMode()
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
-	GameRules:SetHeroSelectionTime(10)
-	GameRules:SetPreGameTime(0)
+	GameRules:SetHeroSelectionTime(20)
+	GameRules:SetPreGameTime(10)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
 	self.secondsPassed = 0
 	self.spawnedList = {}
 	self.king = nil
-	self.spawnedBots = false
-	self.towerExtraBounty = 5000
+	self.towerExtraBounty = 3000
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 3000 -- how close to the king a unit must be to not suffer from weakness
@@ -41,8 +40,8 @@ function CLet4Def:InitGameMode()
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
-	self.radiantTips = {"radiant_tip_1", "radiant_tip_2", "radiant_tip_3", "radiant_tip_4", "radiant_tip_5", "radiant_tip_6", "radiant_tip_7"}
-	self.sizeTipsRadiant = 7
+	self.radiantTips = {"radiant_tip_1", "radiant_tip_2", "radiant_tip_3", "radiant_tip_4", "radiant_tip_5", "radiant_tip_6", "radiant_tip_7", "radiant_tip_8", "radiant_tip_9"}
+	self.sizeTipsRadiant = 9
 	self.direTips = {"dire_tip_1", "dire_tip_2", "dire_tip_3", "dire_tip_4", "dire_tip_5", "dire_tip_6", "dire_tip_7", "dire_tip_8"}
 	self.sizeTipsDire = 8
 end
@@ -50,9 +49,8 @@ end
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
-		--print( "Template addon script is running." )
 		if GameRules:GetDOTATime(false, false) > self.secondsPassed then
-			self.secondsPassed = GameRules:GetDOTATime(false, false)
+			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
 		end
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
@@ -84,7 +82,14 @@ function CLet4Def:DoOncePerSecond()
 		end
 	end
 	--spawn controllable bots if there are not enough people
-	if (not self.spawnedBots and heroCount < 5) then
+	if (self.secondsPassed == 30 and heroCount < 5) then
+		if self.king == nil then
+			ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+		else
+			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			-- increase radiant xp gain to compensate for fewer players
+			self.xpPerSecond = self.xpPerSecond+(5-heroCount)*(5-heroCount)
+		end
 		SendToServerConsole("dota_bot_populate")
 		self.spawnedBots = true
 	end
@@ -102,8 +107,10 @@ function CLet4Def:OnNPCSpawned( event )
 			-- remember dire hero since we need this information elsewhere
 			self.king = spawnedUnit
 			-- tip for dire
-			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-		else -- tip for radiant
+			if self.secondsPassed <= 30 then
+				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			end
+		elseif self.secondsPassed <= 30 then -- tip for radiant
 			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
 	end
