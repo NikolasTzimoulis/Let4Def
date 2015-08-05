@@ -61,7 +61,7 @@ end
 function CLet4Def:DoOncePerSecond()
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
-		GameRules:SetGameWinner(DOTA_TEAM_GOODGUYS)
+		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 	end
 	-- give everyone some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
@@ -124,7 +124,7 @@ function CLet4Def:OnEntityKilled( event )
 	local killedTeam = killedUnit:GetTeam()
 	-- if king is killed, game over for dire
 	if (killedUnit:IsRealHero() and killedTeam == DOTA_TEAM_BADGUYS and not killedUnit:IsReincarnating()) then
-		GameRules:SetGameWinner(DOTA_TEAM_GOODGUYS)
+		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 	end 
 	-- if radiant tower is killed, give extra gold to dire
 	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and self.king ~= nil) then
