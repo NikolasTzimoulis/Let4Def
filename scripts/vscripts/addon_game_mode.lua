@@ -74,35 +74,37 @@ function CLet4Def:DoOncePerSecond()
 	end
 	-- give everyone some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
-	heroCount = 0
 	for _, hero in pairs( allHeroes ) do
 		hero:AddExperience(self.xpPerSecond, false, true)
-		heroCount = heroCount + 1
 	end
 	-- re-apply weakness on dire units if needed
 	for unit, i in pairs(self.spawnedList) do
 		if unit:IsNull() then
 			self.spawnedList[unit] = nil
 		else
-			hpCap = math.max(1,self.weaknessMultiplier*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
+			hpCap = self:CalculateHPCap(unit)
 			if unit:GetHealth() > hpCap and (self.king == nil or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance) then
 				unit:SetHealth(hpCap)
 			end
 		end
 	end
 	--change difficulty if there aren't enough people
-	if (self.secondsPassed == 30 and heroCount < 5) then
-		if (self.king == nil and heroCount > 1) then
+	if (self.secondsPassed == 30) then
+		radiantPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
+		direPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
+		totalPlayerCount = radiantPlayerCount + direPlayerCount
+		if totalPlayerCount == 1 then
+			ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			SendToServerConsole("dota_bot_populate")
+		elseif direPlayerCount < 1 then
 			ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-		elseif heroCount > 1 then
+		elseif radiantPlayerCount < 4 then
 			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 			
 			-- increase radiant passive xp gain
-			self.xpPerSecond = self.xpPerSecond+(5-heroCount)*(5-heroCount)
+			self.xpPerSecond = self.xpPerSecond+(5-totalPlayerCount)*(5-totalPlayerCount)
 			-- decrease tower bounty
-			self.towerExtraBounty = self.towerExtraBounty - self.towerExtraBounty*(5-heroCount)*(5-heroCount)/10
+			self.towerExtraBounty = self.towerExtraBounty - self.towerExtraBounty*(5-totalPlayerCount)*(5-totalPlayerCount)/10
 		end
-		SendToServerConsole("dota_bot_populate")
-		self.spawnedBots = true
 	end
 end
 
@@ -132,9 +134,10 @@ function CLet4Def:OnNPCSpawned( event )
 	-- Remove XP bounties from the game
 	spawnedUnit:SetDeathXP(0)
 	
-	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king then
+	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" then
 		-- Make dire units weaker than normal (put them on a list and use timer to re-apply weakness)
 		self.spawnedList[spawnedUnit] = self.secondsPassed
+		spawnedUnit:SetHealth(self:CalculateHPCap(spawnedUnit)) --apply initial weakness
 		-- Increase gold bounty of dire units
 		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
 		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
@@ -167,4 +170,8 @@ function CLet4Def:OnEntityKilled( event )
 		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
 	end
 
+end
+
+function CLet4Def:CalculateHPCap( unit )
+	return math.max(1,self.weaknessMultiplier*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
 end
