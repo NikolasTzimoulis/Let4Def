@@ -1,4 +1,0 @@
-ReplaceHeroWith
-ModifyGold
-SetMaximumGoldBounty
-SetUseBaseGoldBountyOnHeroes

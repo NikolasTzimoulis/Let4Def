@@ -21,7 +21,7 @@ function Activate()
 end
 
 function CLet4Def:InitGameMode()
-	print( "Template addon is loaded." )
+	print("Starting Let 4 Def...")
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
@@ -36,14 +36,21 @@ function CLet4Def:InitGameMode()
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 3000 -- how close to the king a unit must be to not suffer from weakness
-	self.weaknessMultiplier = 0.2 -- how much dire unit life should be reduced
+	self.weaknessMultiplier = 0.5 -- how much dire unit life should be reduced by the end of the game
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
+	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
+	self.sizeTipsRadiant = 10
+	self.sizeTipsDire = 9
+	self.radiantTips = {}
+	for counter = 1, self.sizeTipsRadiant do
+		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
+	end
+	self.direTips = {}
+	for counter = 1, self.sizeTipsDire do
+		table.insert(self.direTips, "dire_tip_"..tostring(counter))
+	end
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
-	self.radiantTips = {"radiant_tip_1", "radiant_tip_2", "radiant_tip_3", "radiant_tip_4", "radiant_tip_5", "radiant_tip_6", "radiant_tip_7", "radiant_tip_8", "radiant_tip_9"}
-	self.sizeTipsRadiant = 9
-	self.direTips = {"dire_tip_1", "dire_tip_2", "dire_tip_3", "dire_tip_4", "dire_tip_5", "dire_tip_6", "dire_tip_7", "dire_tip_8"}
-	self.sizeTipsDire = 8
 end
 
 -- Evaluate the state of the game
@@ -74,21 +81,25 @@ function CLet4Def:DoOncePerSecond()
 	end
 	-- re-apply weakness on dire units if needed
 	for unit, i in pairs(self.spawnedList) do
-		self.spawnedList[unit] = self.spawnedList[unit] + 1
 		if unit:IsNull() then
 			self.spawnedList[unit] = nil
-		elseif unit:GetHealth() > self.weaknessMultiplier*unit:GetMaxHealth() and self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
-			unit:SetHealth(self.weaknessMultiplier*unit:GetMaxHealth())
+		else
+			hpCap = math.max(1,self.weaknessMultiplier*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
+			if unit:GetHealth() > hpCap and (self.king == nil or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance) then
+				unit:SetHealth(hpCap)
+			end
 		end
 	end
-	--spawn controllable bots if there are not enough people
+	--change difficulty if there aren't enough people
 	if (self.secondsPassed == 30 and heroCount < 5) then
-		if self.king == nil then
+		if (self.king == nil and heroCount > 1) then
 			ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-		else
-			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-			-- increase radiant xp gain to compensate for fewer players
+		elseif heroCount > 1 then
+			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 			
+			-- increase radiant passive xp gain
 			self.xpPerSecond = self.xpPerSecond+(5-heroCount)*(5-heroCount)
+			-- decrease tower bounty
+			self.towerExtraBounty = self.towerExtraBounty - self.towerExtraBounty*(5-heroCount)*(5-heroCount)/10
 		end
 		SendToServerConsole("dota_bot_populate")
 		self.spawnedBots = true
@@ -123,7 +134,7 @@ function CLet4Def:OnNPCSpawned( event )
 	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king then
 		-- Make dire units weaker than normal (put them on a list and use timer to re-apply weakness)
-		self.spawnedList[spawnedUnit] = 0
+		self.spawnedList[spawnedUnit] = self.secondsPassed
 		-- Increase gold bounty of dire units
 		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
 		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
@@ -140,9 +151,15 @@ end
 function CLet4Def:OnEntityKilled( event )
 	local killedUnit = EntIndexToHScript( event.entindex_killed )
 	local killedTeam = killedUnit:GetTeam()
-	-- if king is killed, game over for dire
-	if (killedUnit:IsRealHero() and killedTeam == DOTA_TEAM_BADGUYS and not killedUnit:IsReincarnating()) then
-		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
+	-- if a hero is killed...
+	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating()) then
+		-- if dire/king is killed, game over for dire
+		if killedTeam == DOTA_TEAM_BADGUYS then
+			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
+		-- if radiant hero is killed, give them a short respawn time
+		elseif killedTeam == DOTA_TEAM_GOODGUYS then 
+			killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
+		end
 	end 
 	-- if radiant tower is killed, give extra gold to dire
 	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and self.king ~= nil) then
