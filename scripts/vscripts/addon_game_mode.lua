@@ -134,8 +134,8 @@ function CLet4Def:OnNPCSpawned( event )
 	-- Remove XP bounties from the game
 	spawnedUnit:SetDeathXP(0)
 	
-	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and spawnedUnit ~= self.king and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" then
-		-- Make dire units weaker than normal (put them on a list and use timer to re-apply weakness)
+	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" then
+		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
 		self.spawnedList[spawnedUnit] = self.secondsPassed
 		spawnedUnit:SetHealth(self:CalculateHPCap(spawnedUnit)) --apply initial weakness
 		-- Increase gold bounty of dire units
