@@ -32,11 +32,14 @@ function CLet4Def:InitGameMode()
 	self.secondsPassed = 0
 	self.spawnedList = {}
 	self.king = nil
+	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
+	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
+	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
 	self.towerExtraBounty = 3000
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
-	self.weaknessDistance = 3000 -- how close to the king a unit must be to not suffer from weakness
-	self.weaknessMultiplier = 0.5 -- how much dire unit life should be reduced by the end of the game
+	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
+	self.endgameHPCap = 1 -- how high the dire unit hp cap should go by the end of the game in proportion to their max hp
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.sizeTipsRadiant = 10
@@ -85,6 +88,9 @@ function CLet4Def:DoOncePerSecond()
 			hpCap = self:CalculateHPCap(unit)
 			if unit:GetHealth() > hpCap and (self.king == nil or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance) then
 				unit:SetHealth(hpCap)
+				self.direWeaknessAbility:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
+			elseif self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance then
+				unit:RemoveModifierByName("dire_weakness_modifier")
 			end
 		end
 	end
@@ -173,5 +179,5 @@ function CLet4Def:OnEntityKilled( event )
 end
 
 function CLet4Def:CalculateHPCap( unit )
-	return math.max(1,self.weaknessMultiplier*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
+	return math.max(1,self.endgameHPCap*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
 end
