@@ -25,13 +25,14 @@ function CLet4Def:InitGameMode()
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
-	GameRules:SetHeroSelectionTime(20)
-	GameRules:SetPreGameTime(10)
+	GameRules:SetHeroSelectionTime(30)
+	GameRules:SetPreGameTime(30)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
 	self.secondsPassed = 0
 	self.spawnedList = {}
 	self.king = nil
+	self.checkHeroesPicked = false
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
@@ -42,8 +43,8 @@ function CLet4Def:InitGameMode()
 	self.endgameHPCap = 1 -- how high the dire unit hp cap should go by the end of the game in proportion to their max hp
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
-	self.sizeTipsRadiant = 10
-	self.sizeTipsDire = 9
+	self.sizeTipsRadiant = 11
+	self.sizeTipsDire = 10
 	self.radiantTips = {}
 	for counter = 1, self.sizeTipsRadiant do
 		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
@@ -58,7 +59,18 @@ end
 
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and not self.checkHeroesPicked then
+		-- force random heroes on radiant if they do not select their heroes in time
+		self.checkHeroesPicked = true
+		for playerid = 0, 23 do
+			if PlayerResource:IsValidPlayer(playerid) then
+				player = PlayerResource:GetPlayer(playerid)
+				if player:GetAssignedHero() == nil and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+					player:MakeRandomHeroSelection()
+				end
+			end
+		end
+	elseif GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
@@ -73,6 +85,7 @@ end
 function CLet4Def:DoOncePerSecond()
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
+		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
 		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 	end
 	-- give everyone some xp, enough to reach a high level by 20 minutes
@@ -94,7 +107,7 @@ function CLet4Def:DoOncePerSecond()
 			end
 		end
 	end
-	--change difficulty if there aren't enough people
+	-- change difficulty if there aren't enough people
 	if (self.secondsPassed == 30) then
 		radiantPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
 		direPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
@@ -164,6 +177,7 @@ function CLet4Def:OnEntityKilled( event )
 	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating()) then
 		-- if dire/king is killed, game over for dire
 		if killedTeam == DOTA_TEAM_BADGUYS then
+			GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
 			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 		-- if radiant hero is killed, give them a short respawn time
 		elseif killedTeam == DOTA_TEAM_GOODGUYS then 
