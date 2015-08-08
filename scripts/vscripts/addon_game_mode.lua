@@ -62,10 +62,10 @@ function CLet4Def:OnThink()
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and not self.checkHeroesPicked then
 		-- force random heroes on radiant if they do not select their heroes in time
 		self.checkHeroesPicked = true
-		for playerid = 0, 23 do
+		for playerid = 0, DOTA_MAX_PLAYERS do
 			if PlayerResource:IsValidPlayer(playerid) then
 				player = PlayerResource:GetPlayer(playerid)
-				if player:GetAssignedHero() == nil and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+				if not PlayerResource:HasSelectedHero(playerid) and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
 					player:MakeRandomHeroSelection()
 				end
 			end
@@ -139,10 +139,10 @@ function CLet4Def:OnNPCSpawned( event )
 			-- remember dire hero since we need this information elsewhere
 			self.king = spawnedUnit
 			-- tip for dire
-			if self.secondsPassed <= 30 then
+			if self.secondsPassed <= 10 then
 				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			end
-		elseif self.secondsPassed <= 30 then -- tip for radiant
+		elseif self.secondsPassed <= 10 then -- tip for radiant
 			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
 	end
