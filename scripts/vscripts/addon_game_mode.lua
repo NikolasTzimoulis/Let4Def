@@ -43,8 +43,8 @@ function CLet4Def:InitGameMode()
 	self.endgameHPCap = 1 -- how high the dire unit hp cap should go by the end of the game in proportion to their max hp
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
-	self.sizeTipsRadiant = 12
-	self.sizeTipsDire = 11
+	self.sizeTipsRadiant = 13
+	self.sizeTipsDire = 12
 	self.radiantTips = {}
 	for counter = 1, self.sizeTipsRadiant do
 		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
@@ -65,7 +65,7 @@ function CLet4Def:OnThink()
 		for playerid = 0, DOTA_MAX_PLAYERS do
 			if PlayerResource:IsValidPlayer(playerid) then
 				player = PlayerResource:GetPlayer(playerid)
-				if not PlayerResource:HasSelectedHero(playerid) and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+				if player ~= nil and not PlayerResource:HasSelectedHero(playerid) and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
 					player:MakeRandomHeroSelection()
 				end
 			end
