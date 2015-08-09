@@ -22,6 +22,7 @@ end
 
 function CLet4Def:InitGameMode()
 	print("Starting Let 4 Def...")
+	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
@@ -29,6 +30,7 @@ function CLet4Def:InitGameMode()
 	GameRules:SetPreGameTime(30)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
+	-- initialise stuff
 	self.secondsPassed = 0
 	self.spawnedList = {}
 	self.king = nil
@@ -36,6 +38,7 @@ function CLet4Def:InitGameMode()
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
+	-- game balance parameters
 	self.towerExtraBounty = 3000
 	self.xpPerSecond = 12	-- level 16 in 20 minutes
 	self.timeLimit = 20*60 -- 20 minutes game length
@@ -43,6 +46,7 @@ function CLet4Def:InitGameMode()
 	self.endgameHPCap = 1 -- how high the dire unit hp cap should go by the end of the game in proportion to their max hp
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
+	-- generate tips
 	self.sizeTipsRadiant = 13
 	self.sizeTipsDire = 12
 	self.radiantTips = {}
@@ -53,6 +57,17 @@ function CLet4Def:InitGameMode()
 	for counter = 1, self.sizeTipsDire do
 		table.insert(self.direTips, "dire_tip_"..tostring(counter))
 	end
+	-- victory conditions UI
+	self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
+	self.gameOverTimer.EndTime = 30 
+	self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
+	self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
+	self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
+	self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
+	self.victoryCondition1 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_1" } )
+	self.victoryCondition2 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_2" } )
+	self.victoryCondition3 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_3" } )		
+	-- listen to some game events
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 end
@@ -107,7 +122,6 @@ function CLet4Def:DoOncePerSecond()
 			end
 		end
 	end
-	-- change difficulty if there aren't enough people
 	if (self.secondsPassed == 30) then
 		radiantPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
 		direPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
@@ -119,12 +133,21 @@ function CLet4Def:DoOncePerSecond()
 			ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		elseif radiantPlayerCount < 4 then
 			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 			
+			-- change difficulty if there aren't enough people on radiant
 			-- increase radiant passive xp gain
 			self.xpPerSecond = self.xpPerSecond+(5-totalPlayerCount)*(5-totalPlayerCount)
 			-- decrease tower bounty
 			self.towerExtraBounty = self.towerExtraBounty - self.towerExtraBounty*(5-totalPlayerCount)*(5-totalPlayerCount)/10
 		end
 	end
+	if (self.secondsPassed == 1) then
+		-- hide victory conditions
+		self.victoryCondition1:CompleteQuest()
+		self.victoryCondition2:CompleteQuest()
+		self.victoryCondition3:CompleteQuest()
+	end
+	-- update progress bar
+	self.gameOverProgressbar:SetTextReplaceValue( QUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit-self.secondsPassed )
 end
 
 -- Every time an npc is spawned do this:
