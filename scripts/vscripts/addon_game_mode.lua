@@ -30,22 +30,27 @@ function CLet4Def:InitGameMode()
 	GameRules:SetPreGameTime(30)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
+	-- game balance parameters
+	self.towerExtraBounty = 3000
+	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
+	self.timeLimitBase = 20*60 -- 20 minutes game length
+	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
+	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
+	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
+	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	-- initialise stuff
+	self.timeLimit = self.timeLimitBase
 	self.secondsPassed = 0
+	self.xpSoFar = 0
 	self.spawnedList = {}
 	self.king = nil
 	self.checkHeroesPicked = false
+	self.radiantPlayerCount = 4
+	self.direPlayerCount = 1
+	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
-	-- game balance parameters
-	self.towerExtraBounty = 3000
-	self.xpPerSecond = 12	-- level 16 in 20 minutes
-	self.timeLimit = 20*60 -- 20 minutes game length
-	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
-	self.endgameHPCap = 1 -- how high the dire unit hp cap should go by the end of the game in proportion to their max hp
-	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
-	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	-- generate tips
 	self.sizeTipsRadiant = 13
 	self.sizeTipsDire = 12
@@ -101,19 +106,22 @@ function CLet4Def:DoOncePerSecond()
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
 		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
+		self.gameOverTimer:CompleteQuest()
 		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 	end
 	-- give everyone some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
+	local xpPerSecond = (self.endgameXPTarget - self.xpSoFar) / (self.timeLimit - self.secondsPassed)
 	for _, hero in pairs( allHeroes ) do
-		hero:AddExperience(self.xpPerSecond, false, true)
+		hero:AddExperience(xpPerSecond, false, true)
 	end
+	self.xpSoFar = self.xpSoFar + xpPerSecond
 	-- re-apply weakness on dire units if needed
 	for unit, i in pairs(self.spawnedList) do
 		if unit:IsNull() then
 			self.spawnedList[unit] = nil
 		else
-			hpCap = self:CalculateHPCap(unit)
+			local hpCap = self:CalculateHPCap(unit)
 			if unit:GetHealth() > hpCap and (self.king == nil or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance) then
 				unit:SetHealth(hpCap)
 				self.direWeaknessAbility:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
@@ -122,23 +130,38 @@ function CLet4Def:DoOncePerSecond()
 			end
 		end
 	end
-	if (self.secondsPassed == 30) then
-		radiantPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
-		direPlayerCount = PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
-		totalPlayerCount = radiantPlayerCount + direPlayerCount
-		if totalPlayerCount == 1 then
-			ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-			SendToServerConsole("dota_bot_populate")
-		elseif direPlayerCount < 1 then
-			ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-		elseif radiantPlayerCount < 4 then
-			ShowGenericPopup("warning",  "not_enough_players", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 			
-			-- change difficulty if there aren't enough people on radiant
-			-- increase radiant passive xp gain
-			self.xpPerSecond = self.xpPerSecond+(5-totalPlayerCount)*(5-totalPlayerCount)
-			-- decrease tower bounty
-			self.towerExtraBounty = self.towerExtraBounty - self.towerExtraBounty*(5-totalPlayerCount)*(5-totalPlayerCount)/10
+	-- re-check number of players every minute
+	if (self.secondsPassed % 60 == 1) then
+		local newRadiantPlayerCount = 0
+		local newDirePlayerCount = 0
+		for playerid = 0, DOTA_MAX_PLAYERS do
+			if PlayerResource:IsValidPlayer(playerid) then
+				player = PlayerResource:GetPlayer(playerid)
+				if player ~= nil then
+					if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+						newRadiantPlayerCount = newRadiantPlayerCount + 1
+					elseif PlayerResource:GetTeam(playerid) == DOTA_TEAM_BADGUYS then
+						newDirePlayerCount = newDirePlayerCount + 1
+					end
+				end
+			end
 		end
+		local newTotalPlayerCount = newRadiantPlayerCount + newDirePlayerCount
+		if newTotalPlayerCount ~= self.totalPlayerCount then
+			if newTotalPlayerCount == 1 then
+				ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			elseif newDirePlayerCount < 1 then
+				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			elseif newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
+				-- change difficulty
+				ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
+				self.timeLimit = self.secondsPassed + (newRadiantPlayerCount/self.radiantPlayerCount) * (self.timeLimit - self.secondsPassed)
+				print(self.timeLimit/60)
+			end
+		end
+		self.radiantPlayerCount = newRadiantPlayerCount
+		self.direPlayerCount = newDirePlayerCount
+		self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	end
 	if (self.secondsPassed == 1) then
 		-- hide victory conditions
@@ -221,5 +244,5 @@ function CLet4Def:OnEntityKilled( event )
 end
 
 function CLet4Def:CalculateHPCap( unit )
-	return math.max(1,self.endgameHPCap*unit:GetMaxHealth()*self.spawnedList[unit]/self.timeLimit)
+	return math.max(1,self.hPCapIncreaseRate*self.spawnedList[unit]*unit:GetMaxHealth())
 end
