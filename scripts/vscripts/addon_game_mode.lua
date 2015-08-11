@@ -185,10 +185,10 @@ function CLet4Def:OnNPCSpawned( event )
 			-- remember dire hero since we need this information elsewhere
 			self.king = spawnedUnit
 			-- tip for dire
-			if self.secondsPassed <= 10 then
+			if self.secondsPassed == 0 then
 				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			end
-		elseif self.secondsPassed <= 10 then -- tip for radiant
+		elseif self.secondsPassed == 0 then -- tip for radiant
 			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
 	end
