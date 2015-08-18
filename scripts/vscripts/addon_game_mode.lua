@@ -152,10 +152,10 @@ function CLet4Def:DoOncePerSecond()
 				ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			elseif newDirePlayerCount < 1 then
 				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-			elseif newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
+			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
 				-- change difficulty
 				ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
-				self.timeLimit = self.secondsPassed + (newRadiantPlayerCount/self.radiantPlayerCount) * (self.timeLimit - self.secondsPassed)
+				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
 				print(self.timeLimit/60)
 			end
 		end
@@ -225,7 +225,7 @@ function CLet4Def:OnEntityKilled( event )
 	local killedUnit = EntIndexToHScript( event.entindex_killed )
 	local killedTeam = killedUnit:GetTeam()
 	-- if a hero is killed...
-	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating()) then
+	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating() and not killedUnit:IsClone()) then
 		-- if dire/king is killed, game over for dire
 		if killedTeam == DOTA_TEAM_BADGUYS then
 			GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
@@ -245,4 +245,14 @@ end
 
 function CLet4Def:CalculateHPCap( unit )
 	return math.max(1,self.hPCapIncreaseRate*self.spawnedList[unit]*unit:GetMaxHealth())
+end
+
+function math.sign(x)
+   if x<0 then
+     return -1
+   elseif x>0 then
+     return 1
+   else
+     return 0
+   end
 end
