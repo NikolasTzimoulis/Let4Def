@@ -34,7 +34,7 @@ function CLet4Def:InitGameMode()
 	self.towerExtraBounty = 3000
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
 	self.timeLimitBase = 20*60 -- 20 minutes game length
-	self.roshDireControlTimer = 15*20 -- when to give rosh control to dire
+	self.roshDireControlTimer = 15*60 -- when to give rosh control to dire
 	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
@@ -133,7 +133,7 @@ function CLet4Def:DoOncePerSecond()
 		end
 	end
 	-- give rosh control to dire if enough time has passed
-	if self.secondsPassed >= self.roshDireControlTimer and self.rosh ~= nil then
+	if self.secondsPassed == self.roshDireControlTimer and self.rosh ~= nil then
 		CreateUnitByName("npc_dota_roshan", self.rosh:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_BADGUYS)
 		self.rosh:RemoveSelf()
 		self.rosh = nil
@@ -164,7 +164,7 @@ function CLet4Def:DoOncePerSecond()
 				-- change difficulty
 				ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
-				print(self.timeLimit/60)
+				print("New time limit:", self.timeLimit/60)
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
@@ -253,7 +253,7 @@ function CLet4Def:OnEntityKilled( event )
 		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
 	end
 	-- disable dire rosh control if he is ever killed
-	if killedUnit:GetUnitName() ~= "npc_dota_roshan" then 
+	if killedUnit:GetUnitName() == "npc_dota_roshan" then 
 		self.rosh = nil
 	end
 end
