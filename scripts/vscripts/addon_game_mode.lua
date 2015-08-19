@@ -199,7 +199,7 @@ function CLet4Def:OnNPCSpawned( event )
 	-- Remove XP bounties from the game
 	spawnedUnit:SetDeathXP(0)
 	
-	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" then
+	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
 		self.spawnedList[spawnedUnit] = self.secondsPassed
 		spawnedUnit:SetHealth(self:CalculateHPCap(spawnedUnit)) --apply initial weakness
@@ -240,7 +240,6 @@ function CLet4Def:OnEntityKilled( event )
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
 		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
 	end
-
 end
 
 function CLet4Def:CalculateHPCap( unit )
