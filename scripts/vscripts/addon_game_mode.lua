@@ -34,6 +34,7 @@ function CLet4Def:InitGameMode()
 	self.towerExtraBounty = 3000
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
 	self.timeLimitBase = 20*60 -- 20 minutes game length
+	self.roshDireControlTimer = 15*20 -- when to give rosh control to dire
 	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
@@ -51,9 +52,10 @@ function CLet4Def:InitGameMode()
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
+	self.rosh = nil
 	-- generate tips
-	self.sizeTipsRadiant = 13
-	self.sizeTipsDire = 12
+	self.sizeTipsRadiant = 14
+	self.sizeTipsDire = 13
 	self.radiantTips = {}
 	for counter = 1, self.sizeTipsRadiant do
 		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
@@ -130,6 +132,12 @@ function CLet4Def:DoOncePerSecond()
 			end
 		end
 	end
+	-- give rosh control to dire if enough time has passed
+	if self.secondsPassed >= self.roshDireControlTimer and self.rosh ~= nil then
+		CreateUnitByName("npc_dota_roshan", self.rosh:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_BADGUYS)
+		self.rosh:RemoveSelf()
+		self.rosh = nil
+	end
 	-- re-check number of players every minute
 	if (self.secondsPassed % 60 == 1) then
 		local newRadiantPlayerCount = 0
@@ -183,7 +191,7 @@ function CLet4Def:OnNPCSpawned( event )
 				spawnedUnit:HeroLevelUp(false)
 			end
 			-- remember dire hero since we need this information elsewhere
-			self.king = spawnedUnit
+			self.king = spawnedUnit				
 			-- tip for dire
 			if self.secondsPassed == 0 then
 				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
@@ -197,8 +205,7 @@ function CLet4Def:OnNPCSpawned( event )
 		spawnedUnit:RemoveSelf()
 	end	
 	-- Remove XP bounties from the game
-	spawnedUnit:SetDeathXP(0)
-	
+	spawnedUnit:SetDeathXP(0)	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and spawnedUnit:GetUnitName() ~= "npc_dota_roshan" and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
 		self.spawnedList[spawnedUnit] = self.secondsPassed
@@ -207,16 +214,21 @@ function CLet4Def:OnNPCSpawned( event )
 		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
 		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
 		-- Give full control of neutral units to dire
-		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS and self.king ~= nil then
-			spawnedUnit:SetTeam(DOTA_TEAM_BADGUYS)
-			spawnedUnit:SetOwner(self.king)
-			spawnedUnit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)		
+		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
+			self:giveDireControl(spawnedUnit)	
 		end		
 	end
 	
-	-- make roshan drop more cheese
-	if spawnedUnit:GetUnitName() == "npc_dota_roshan" then
-		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+	-- give roshan cheese and make him controllable by dire
+	if spawnedUnit:GetUnitName() == "npc_dota_roshan"  then
+		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
+			spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+			if self.secondsPassed == 0 then
+				self.rosh = spawnedUnit
+			end
+		else
+			self:giveDireControl(spawnedUnit)
+		end
 	end
 end
 
@@ -240,10 +252,22 @@ function CLet4Def:OnEntityKilled( event )
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
 		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
 	end
+	-- disable dire rosh control if he is ever killed
+	if killedUnit:GetUnitName() ~= "npc_dota_roshan" then 
+		self.rosh = nil
+	end
 end
 
 function CLet4Def:CalculateHPCap( unit )
 	return math.max(1,self.hPCapIncreaseRate*self.spawnedList[unit]*unit:GetMaxHealth())
+end
+
+function CLet4Def:giveDireControl(unit)
+	if self.king ~= nil and unit ~= nil then
+		unit:SetTeam(DOTA_TEAM_BADGUYS)
+		unit:SetOwner(self.king)
+		unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)		
+	end
 end
 
 function math.sign(x)
