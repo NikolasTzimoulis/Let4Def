@@ -22,14 +22,6 @@ end
 
 function CLet4Def:InitGameMode()
 	print("Starting Let 4 Def...")
-	-- base rules
-	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
-	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
-	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
-	GameRules:SetHeroSelectionTime(30)
-	GameRules:SetPreGameTime(30)
-	GameRules:SetPostGameTime(30)
-	GameRules:SetGoldPerTick (0)
 	-- game balance parameters
 	self.towerExtraBounty = 3000
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
@@ -38,11 +30,22 @@ function CLet4Def:InitGameMode()
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
+	self.pregametime = 30
+	self.roshInvulDuration = self.pregametime + 30
+	-- base rules
+	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
+	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
+	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
+	GameRules:SetHeroSelectionTime(30)
+	GameRules:SetPreGameTime(self.pregametime)
+	GameRules:SetPostGameTime(30)
+	GameRules:SetGoldPerTick (0)
 	-- initialise stuff
 	self.timeLimit = self.timeLimitBase
 	self.secondsPassed = 0
 	self.xpSoFar = 0
 	self.spawnedList = {}
+	self.controlLaterList = {}
 	self.king = nil
 	self.checkHeroesPicked = false
 	self.radiantPlayerCount = 4
@@ -103,6 +106,12 @@ end
 
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
+	-- Print messages about how much time remains
+	if (self.timeLimit - self.secondsPassed) == 60 then
+		GameRules:SendCustomMessage("1 minute remaining.", DOTA_TEAM_NEUTRALS, 1)
+	elseif (self.timeLimit - self.secondsPassed) % (60) == 0 then
+		GameRules:SendCustomMessage(tostring(math.ceil((self.timeLimit - self.secondsPassed)/60)).. " minutes remaining.", DOTA_TEAM_NEUTRALS, 1)
+	end
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
 		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
@@ -118,23 +127,30 @@ function CLet4Def:DoOncePerSecond()
 	self.xpSoFar = self.xpSoFar + xpPerSecond
 	-- re-apply weakness on dire units if needed
 	for unit, i in pairs(self.spawnedList) do
-		if unit:IsNull() then
-			self.spawnedList[unit] = nil
-		else
+		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
 			local hpCap = self:CalculateHPCap(unit)
-			if unit:GetHealth() > hpCap and (self.king == nil or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance) then
-				unit:SetHealth(hpCap)
+			if not self.spawnedList[unit] or not IsValidEntity(self.king) or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
+				if unit:GetHealth() > hpCap then
+					unit:SetHealth(hpCap)
+				end
 				self.direWeaknessAbility:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
-			elseif self.king ~= nil and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance then
+				self.spawnedList[unit] = true
+			elseif IsValidEntity(self.king) and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance then
 				unit:RemoveModifierByName("dire_weakness_modifier")
 				-- turn rosh against dire if dire hero comes too close
 				if unit:GetUnitName() == "custom_npc_dota_roshan" then
+					self.spawnedList[unit] = nil
 					unit:SetTeam(DOTA_TEAM_NEUTRALS)
 					unit:SetOwner(nil)
 					unit:SetControllableByPlayer(-1, true)	
-					unit:MoveToPositionAggressive(self.king:GetAbsOrigin())
+					unit:MoveToTargetToAttack(self.king)
+					GameRules:SendCustomMessage("Roshan is no longer controlled by the Dire!", DOTA_TEAM_BADGUYS, 1)
 				end
+			elseif hpCap > 0.99*unit:GetMaxHealth() then
+				unit:RemoveModifierByName("dire_weakness_modifier")
 			end
+		else
+			self.spawnedList[unit] = nil
 		end
 	end
 	-- re-check number of players every minute
@@ -161,9 +177,10 @@ function CLet4Def:DoOncePerSecond()
 				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
 				-- change difficulty
-				ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
+				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
+				GameRules:SendCustomMessage("difficulty_changed", DOTA_TEAM_NEUTRAL, 1)
+				GameRules:SendCustomMessage("New time limit: "..tostring(self.timeLimit/60).. " minutes", DOTA_TEAM_NEUTRAL, 1)
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
-				print("New time limit:", self.timeLimit/60)
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
@@ -190,7 +207,11 @@ function CLet4Def:OnNPCSpawned( event )
 				spawnedUnit:HeroLevelUp(false)
 			end
 			-- remember dire hero since we need this information elsewhere
-			self.king = spawnedUnit				
+			self.king = spawnedUnit		
+			-- give dire control of units that were spawned before the dire hero
+			for _, unit in pairs(self.controlLaterList) do 
+				self:giveDireControl(unit)
+			end 
 			-- tip for dire
 			if self.secondsPassed == 0 then
 				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
@@ -207,8 +228,7 @@ function CLet4Def:OnNPCSpawned( event )
 	spawnedUnit:SetDeathXP(0)	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
-		self.spawnedList[spawnedUnit] = self.secondsPassed
-		spawnedUnit:SetHealth(self:CalculateHPCap(spawnedUnit)) --apply initial weakness
+		self.spawnedList[spawnedUnit] = false
 		-- Increase gold bounty of dire units
 		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
 		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
@@ -227,7 +247,7 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
 		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
-		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = 30}) 
+		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = self.roshInvulDuration}) 
 	end
 end
 
@@ -247,15 +267,16 @@ function CLet4Def:OnEntityKilled( event )
 		end
 	end 
 	-- if radiant tower is killed, give extra gold to dire
-	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and self.king ~= nil) then
+	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and IsValidEntity(self.king)) then
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
 		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
 	end
 	-- if rosh is killed, make him drop his items
 	if killedUnit:GetUnitName() == "custom_npc_dota_roshan" then
+		GameRules:SendCustomMessage("Roshan has been killed and will not respawn!", DOTA_TEAM_NEUTRALS, 1)
 		for itemSlot = 0, 5, 1 do 
 			local item = killedUnit:GetItemInSlot( itemSlot ) 
-			if item ~= nil then 
+			if IsValidEntity(item) then 
 				CreateItemOnPositionSync(killedUnit:GetOrigin(), CreateItem(item:GetName() , nil, nil)) 
 			end
 		end		
@@ -267,10 +288,12 @@ function CLet4Def:CalculateHPCap( unit )
 end
 
 function CLet4Def:giveDireControl(unit)
-	if self.king ~= nil and unit ~= nil then
+	if IsValidEntity(self.king) and IsValidEntity(unit)then
 		unit:SetTeam(DOTA_TEAM_BADGUYS)
 		unit:SetOwner(self.king)
 		unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)		
+	elseif not IsValidEntity(self.king) then
+		table.insert(self.controlLaterList, unit)
 	end
 end
 
