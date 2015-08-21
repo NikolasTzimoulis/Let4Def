@@ -53,7 +53,7 @@ function CLet4Def:InitGameMode()
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
 	-- generate tips
 	self.sizeTipsRadiant = 14
-	self.sizeTipsDire = 13
+	self.sizeTipsDire = 14
 	self.radiantTips = {}
 	for counter = 1, self.sizeTipsRadiant do
 		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
@@ -223,10 +223,11 @@ function CLet4Def:OnNPCSpawned( event )
 		CreateUnitByName("custom_npc_dota_roshan", spawnedUnit:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_NEUTRALS)
 		spawnedUnit:RemoveSelf()
 	end
-	-- give roshan aegis and cheese
+	-- give roshan aegis and cheese and make him invulnerable for a while
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
-		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))		
+		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = 30}) 
 	end
 end
 
