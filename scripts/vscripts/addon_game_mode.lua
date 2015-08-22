@@ -113,9 +113,11 @@ function CLet4Def:DoOncePerSecond()
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 	end
 	-- Display messages about how much time remains
-	if (self.timeLimit - self.secondsPassed) == 60 then
+	if (math.ceil(self.timeLimit) - self.secondsPassed) == 0 then
+		GameRules:SendCustomMessage("time_up", 0, 0)
+	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
-	elseif (math.ceil(self.timeLimit) - self.secondsPassed) % 60 == 0 then
+	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
 		GameRules:SendCustomMessage("x_minutes",0,  math.ceil((self.timeLimit - self.secondsPassed)/60))
 	end
 	-- If time is up, game over for dire
@@ -186,7 +188,7 @@ function CLet4Def:DoOncePerSecond()
 				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
 				GameRules:SendCustomMessage("difficulty_changed", 0, 0)
-				GameRules:SendCustomMessage("new_time", 0, math.ceil(self.timeLimit/60))
+				GameRules:SendCustomMessage("new_time", 0, math.round(self.timeLimit/60))
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
@@ -306,4 +308,9 @@ function math.sign(x)
    else
      return 0
    end
+end
+
+function math.round(num, idp)
+  local mult = 10^(idp or 0)
+  return math.floor(num * mult + 0.5) / mult
 end
