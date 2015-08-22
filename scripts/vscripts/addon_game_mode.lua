@@ -31,7 +31,7 @@ function CLet4Def:InitGameMode()
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.pregametime = 30
-	self.roshInvulDuration = self.pregametime + 30
+	self.roshVulnerableTime = 30
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
@@ -66,12 +66,6 @@ function CLet4Def:InitGameMode()
 		table.insert(self.direTips, "dire_tip_"..tostring(counter))
 	end
 	-- victory conditions UI
-	self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
-	self.gameOverTimer.EndTime = 30 
-	self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
-	self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
-	self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
-	self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 	self.victoryCondition1 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_1" } )
 	self.victoryCondition2 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_2" } )
 	self.victoryCondition3 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_3" } )		
@@ -106,10 +100,22 @@ end
 
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
+	-- hide victory conditions and start progressbar
+	if (self.secondsPassed == 1) then
+		self.victoryCondition1:CompleteQuest()
+		self.victoryCondition2:CompleteQuest()
+		self.victoryCondition3:CompleteQuest()
+		self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
+		self.gameOverTimer.EndTime = 30 
+		self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
+		self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
+		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
+		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
+	end
 	-- Print messages about how much time remains
 	if (self.timeLimit - self.secondsPassed) == 60 then
 		GameRules:SendCustomMessage("1 minute remaining.", DOTA_TEAM_NEUTRALS, 1)
-	elseif (self.timeLimit - self.secondsPassed) % (60) == 0 then
+	elseif (math.ceil(self.timeLimit) - self.secondsPassed) % 60 == 0 then
 		GameRules:SendCustomMessage(tostring(math.ceil((self.timeLimit - self.secondsPassed)/60)).. " minutes remaining.", DOTA_TEAM_NEUTRALS, 1)
 	end
 	-- If time is up, game over for dire
@@ -178,20 +184,14 @@ function CLet4Def:DoOncePerSecond()
 			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
 				-- change difficulty
 				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
-				GameRules:SendCustomMessage("difficulty_changed", DOTA_TEAM_NEUTRAL, 1)
-				GameRules:SendCustomMessage("New time limit: "..tostring(self.timeLimit/60).. " minutes", DOTA_TEAM_NEUTRAL, 1)
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
+				GameRules:SendCustomMessage("difficulty_changed", DOTA_TEAM_NEUTRALS, 1)
+				GameRules:SendCustomMessage("New time limit: "..tostring(self.timeLimit/60).. " minutes", DOTA_TEAM_NEUTRALS, 1)
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
 		self.direPlayerCount = newDirePlayerCount
 		self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
-	end
-	if (self.secondsPassed == 1) then
-		-- hide victory conditions
-		self.victoryCondition1:CompleteQuest()
-		self.victoryCondition2:CompleteQuest()
-		self.victoryCondition3:CompleteQuest()
 	end
 	-- update progress bar
 	self.gameOverProgressbar:SetTextReplaceValue( QUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit-self.secondsPassed )
@@ -247,7 +247,8 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
 		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
-		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = self.roshInvulDuration}) 
+		invulDuration = max(1,-GameRules:GetDOTATime(false, true) + self.roshVulnerableTime)
+		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = invulDuration}) 
 	end
 end
 
