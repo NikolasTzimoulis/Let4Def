@@ -30,8 +30,8 @@ function CLet4Def:InitGameMode()
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
-	self.pregametime = 30
-	self.roshVulnerableTime = 30
+	self.pregametime = 30	--how long should the pre-game period last
+	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
