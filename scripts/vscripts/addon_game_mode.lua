@@ -112,11 +112,11 @@ function CLet4Def:DoOncePerSecond()
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 	end
-	-- Print messages about how much time remains
+	-- Display messages about how much time remains
 	if (self.timeLimit - self.secondsPassed) == 60 then
-		GameRules:SendCustomMessage("1 minute remaining.", DOTA_TEAM_NEUTRALS, 1)
+		GameRules:SendCustomMessage("1_minute", 0, 0)
 	elseif (math.ceil(self.timeLimit) - self.secondsPassed) % 60 == 0 then
-		GameRules:SendCustomMessage(tostring(math.ceil((self.timeLimit - self.secondsPassed)/60)).. " minutes remaining.", DOTA_TEAM_NEUTRALS, 1)
+		GameRules:SendCustomMessage("x_minutes",0,  math.ceil((self.timeLimit - self.secondsPassed)/60))
 	end
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
@@ -150,7 +150,7 @@ function CLet4Def:DoOncePerSecond()
 					unit:SetOwner(nil)
 					unit:SetControllableByPlayer(-1, true)	
 					unit:MoveToTargetToAttack(self.king)
-					GameRules:SendCustomMessage("Roshan is no longer controlled by the Dire!", DOTA_TEAM_BADGUYS, 1)
+					GameRules:SendCustomMessage("roshan_control", 0, 0)
 				end
 			elseif hpCap > 0.99*unit:GetMaxHealth() then
 				unit:RemoveModifierByName("dire_weakness_modifier")
@@ -185,8 +185,8 @@ function CLet4Def:DoOncePerSecond()
 				-- change difficulty
 				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
-				GameRules:SendCustomMessage("difficulty_changed", DOTA_TEAM_NEUTRALS, 1)
-				GameRules:SendCustomMessage("New time limit: "..tostring(self.timeLimit/60).. " minutes", DOTA_TEAM_NEUTRALS, 1)
+				GameRules:SendCustomMessage("difficulty_changed", 0, 0)
+				GameRules:SendCustomMessage("new_time", 0, math.ceil(self.timeLimit/60))
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
@@ -270,11 +270,11 @@ function CLet4Def:OnEntityKilled( event )
 	-- if radiant tower is killed, give extra gold to dire
 	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and IsValidEntity(self.king)) then
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
-		GameRules:SendCustomMessage("Dire received <font color='#CCCC00'>"..self.towerExtraBounty.."</font> gold for destroying a tower!", DOTA_TEAM_BADGUYS, 1)
+		GameRules:SendCustomMessage("tower_gold", 0, self.towerExtraBounty)
 	end
 	-- if rosh is killed, make him drop his items
 	if killedUnit:GetUnitName() == "custom_npc_dota_roshan" then
-		GameRules:SendCustomMessage("Roshan has been killed and will not respawn!", DOTA_TEAM_NEUTRALS, 1)
+		GameRules:SendCustomMessage("roshan_killed", 0, 0)
 		for itemSlot = 0, 5, 1 do 
 			local item = killedUnit:GetItemInSlot( itemSlot ) 
 			if IsValidEntity(item) then 
