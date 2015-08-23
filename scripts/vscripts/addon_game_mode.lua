@@ -5,13 +5,8 @@ if CLet4Def == nil then
 end
 
 function Precache( context )
-	--[[
-		Precache things we know we'll use.  Possible file types include (but not limited to):
-			PrecacheResource( "model", "*.vmdl", context )
-			PrecacheResource( "soundfile", "*.vsndevts", context )
-			PrecacheResource( "particle", "*.vpcf", context )
-			PrecacheResource( "particle_folder", "particles/folder", context )
-	]]
+	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
+	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 end
 
 -- Create the game mode when we activate
@@ -117,6 +112,7 @@ function CLet4Def:DoOncePerSecond()
 		GameRules:SendCustomMessage("time_up", 0, 0)
 	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
+		EmitGlobalSound("powerup_03")
 	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
 		GameRules:SendCustomMessage("x_minutes",0,  math.ceil((self.timeLimit - self.secondsPassed)/60))
 	end
@@ -153,6 +149,7 @@ function CLet4Def:DoOncePerSecond()
 					unit:SetControllableByPlayer(-1, true)	
 					unit:MoveToTargetToAttack(self.king)
 					GameRules:SendCustomMessage("roshan_control", 0, 0)
+					EmitGlobalSound("RoshanDT.Scream")
 				end
 			elseif hpCap > 0.99*unit:GetMaxHealth() then
 				unit:RemoveModifierByName("dire_weakness_modifier")
@@ -189,6 +186,7 @@ function CLet4Def:DoOncePerSecond()
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
 				GameRules:SendCustomMessage("difficulty_changed", 0, 0)
 				GameRules:SendCustomMessage("new_time", 0, math.round(self.timeLimit/60))
+				EmitGlobalSound("ui.npe_objective_given")
 			end
 		end
 		self.radiantPlayerCount = newRadiantPlayerCount
