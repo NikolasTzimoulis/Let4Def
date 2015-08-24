@@ -219,6 +219,8 @@ function CLet4Def:OnNPCSpawned( event )
 			if self.secondsPassed == 0 then
 				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			end
+			-- make dire hero model bigger
+			spawnedUnit:SetModelScale(1.2)
 		elseif self.secondsPassed == 0 then -- tip for radiant
 			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
