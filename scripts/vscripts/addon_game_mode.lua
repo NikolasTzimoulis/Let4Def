@@ -7,6 +7,7 @@ end
 function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
+	PrecacheResource("soundfile", "soundevents/music/game_sounds_stingers_diretide.vsndevts", context)
 end
 
 -- Create the game mode when we activate
@@ -110,6 +111,8 @@ function CLet4Def:DoOncePerSecond()
 	-- Display messages about how much time remains
 	if (math.ceil(self.timeLimit) - self.secondsPassed) == 0 then
 		GameRules:SendCustomMessage("time_up", 0, 0)
+	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 10 then
+		EmitGlobalSound("diretide_sugarrush_Stinger")
 	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
 		EmitGlobalSound("powerup_03")
