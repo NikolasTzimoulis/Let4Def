@@ -290,7 +290,7 @@ function CLet4Def:OnEntityKilled( event )
 end
 
 function CLet4Def:CalculateHPCap( unit )
-	return math.max(0.01*unit:GetMaxHealth(),self.hPCapIncreaseRate*self.secondsPassed*unit:GetMaxHealth())
+	return math.max(1, 0.01*unit:GetMaxHealth() ,self.hPCapIncreaseRate*self.secondsPassed*unit:GetMaxHealth())
 end
 
 function CLet4Def:giveDireControl(unit)
