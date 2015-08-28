@@ -117,7 +117,7 @@ function CLet4Def:DoOncePerSecond()
 		GameRules:SendCustomMessage("1_minute", 0, 0)
 		EmitGlobalSound("powerup_03")
 	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
-		GameRules:SendCustomMessage("x_minutes",0,  math.ceil((self.timeLimit - self.secondsPassed)/60))
+		GameRules:SendCustomMessage("x_minutes",0,  math.round((self.timeLimit - self.secondsPassed)/60))
 	end
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
