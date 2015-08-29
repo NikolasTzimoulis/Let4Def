@@ -210,7 +210,9 @@ function CLet4Def:OnNPCSpawned( event )
 				spawnedUnit:HeroLevelUp(false)
 			end
 			-- remember dire hero since we need this information elsewhere
-			self.king = spawnedUnit		
+			if not IsValidEntity(self.king) then
+				self.king = spawnedUnit	
+			end
 			-- give dire control of units that were spawned before the dire hero
 			for _, unit in pairs(self.controlLaterList) do 
 				self:giveDireControl(unit)
@@ -263,7 +265,7 @@ function CLet4Def:OnEntityKilled( event )
 	local killedTeam = killedUnit:GetTeam()
 	-- if a hero is killed...
 	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating() and not killedUnit:IsClone()) then
-		-- if dire/king is killed, game over for dire
+		-- if their hero is killed, game over for dire
 		if killedTeam == DOTA_TEAM_BADGUYS then
 			GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
 			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
