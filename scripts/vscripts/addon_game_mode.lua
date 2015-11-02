@@ -8,6 +8,7 @@ function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/music/game_sounds_stingers_diretide.vsndevts", context)
+	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
 end
 
 -- Create the game mode when we activate
@@ -109,15 +110,45 @@ function CLet4Def:DoOncePerSecond()
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 	end
 	-- Display messages about how much time remains
-	if (math.ceil(self.timeLimit) - self.secondsPassed) == 0 then
+	local timeRemaining = (math.ceil(self.timeLimit) - self.secondsPassed)
+	if timeRemaining == 0 then
 		GameRules:SendCustomMessage("time_up", 0, 0)
-	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 10 then
-		EmitGlobalSound("diretide_sugarrush_Stinger")
-	elseif (math.ceil(self.timeLimit) - self.secondsPassed) == 60 then
+	elseif timeRemaining == 1 then
+		EmitGlobalSound("announcer_ann_custom_countdown_01")
+	elseif timeRemaining == 2 then
+		EmitGlobalSound("announcer_ann_custom_countdown_02")
+	elseif timeRemaining == 3 then
+		EmitGlobalSound("announcer_ann_custom_countdown_03")
+	elseif timeRemaining == 4 then
+		EmitGlobalSound("announcer_ann_custom_countdown_04")
+	elseif timeRemaining == 5 then
+		EmitGlobalSound("announcer_ann_custom_countdown_05")
+	elseif timeRemaining == 6 then
+		EmitGlobalSound("announcer_ann_custom_countdown_06")
+	elseif timeRemaining == 7 then
+		EmitGlobalSound("announcer_ann_custom_countdown_07")
+	elseif timeRemaining == 8 then
+		EmitGlobalSound("announcer_ann_custom_countdown_08")
+	elseif timeRemaining == 9 then
+		EmitGlobalSound("announcer_ann_custom_countdown_09")
+	elseif timeRemaining == 10 then
+		EmitGlobalSound("announcer_ann_custom_countdown_10")
+	elseif timeRemaining == 30 then
+		EmitGlobalSound("announcer_ann_custom_timer_sec_30")
+	elseif timeRemaining == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
-		EmitGlobalSound("powerup_03")
 	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
-		GameRules:SendCustomMessage("x_minutes",0,  math.round((self.timeLimit - self.secondsPassed)/60))
+		local minutesRemaining = math.round((self.timeLimit - self.secondsPassed)/60)
+		GameRules:SendCustomMessage("x_minutes",0,  minutesRemaining)
+		if minutesRemaining == 15 then
+			EmitGlobalSound("announcer_ann_custom_timer_15")
+		elseif minutesRemaining == 10 then
+			EmitGlobalSound("announcer_ann_custom_timer_10")
+		elseif minutesRemaining == 5 then
+			EmitGlobalSound("announcer_ann_custom_timer_05")
+		elseif minutesRemaining == 2 then
+			EmitGlobalSound("announcer_ann_custom_timer_02")
+		end
 	end
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then

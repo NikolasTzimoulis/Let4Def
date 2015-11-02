@@ -35,7 +35,7 @@
 		//-------------------------------------------------------------------------------------------------------------
 		"BaseClass"             "ability_datadriven"
 		"AbilityBehavior"       "DOTA_ABILITY_BEHAVIOR_PASSIVE"
-		"AbilityTextureName"    "abyssal_underlord_atrophy_aura"
+		"AbilityTextureName"    "skeleton_king_reincarnation"
 	 
 		// Modifiers
 		//-------------------------------------------------------------------------------------------------------------
@@ -43,18 +43,7 @@
 		{
 			"dire_weakness_modifier"
 			{
-				"TextureName"    "abyssal_underlord_atrophy_aura"
-				"OnCreated"
-				{
-					"AttachEffect"
-					{
-						"Target" "CASTER"
-						"EffectName" "particles/econ/generic/generic_buff_1/generic_buff_1.vpcf"
-						"EffectAttachType" "follow_overhead"
-						"EffectLifeDurationScale" "1"
-						"EffectColorA" "255 0 0"
-					}
-				}
+				"TextureName"    "skeleton_king_reincarnation"
 			}
 		}
 	}
