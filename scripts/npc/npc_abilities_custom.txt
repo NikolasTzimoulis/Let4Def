@@ -36,11 +36,6 @@
 		"BaseClass"             "ability_datadriven"
 		"AbilityBehavior"       "DOTA_ABILITY_BEHAVIOR_PASSIVE"
 		"AbilityTextureName"    ""
-		
-		"precache"
-		{
-			"particle" "particles/units/heroes/hero_abaddon/abaddon_aphotic_shield_explosion.vpcf"
-		}
 		// Modifiers
 		//-------------------------------------------------------------------------------------------------------------
 		"Modifiers"
@@ -48,20 +43,6 @@
 			"dire_weakness_modifier"
 			{
 				"TextureName"    "doom_bringer_doom"
-				"OnDestroy"
-				{
-					"AttachEffect"
-					{
-						 "EffectName" "particles/units/heroes/hero_abaddon/abaddon_aphotic_shield_explosion.vpcf"
-						 "EffectAttachType" "follow_origin"
-						 "Target" "UNIT"
-						 "ControlPointEntities"
-						{
-							"TARGET" "attach_origin"
-							"TARGET" "attach_origin"
-						}
-					}
-				}
 			}
 			"dire_strength_modifier"
 			{
