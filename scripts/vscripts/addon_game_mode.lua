@@ -9,7 +9,7 @@ function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
 	PrecacheResource("particle", "particles/items_fx/aura_hp_cap_ring.vpcf", context)
-	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", context)
+	PrecacheResource("particle", "particles/units/heroes/hero_abaddon/abaddon_aphotic_shield_explosion.vpcf", context)
 end
 
 -- Create the game mode when we activate
@@ -100,6 +100,9 @@ end
 
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
+	if (self.secondsPassed % 10 == 0 and IsValidEntity(self.king)) then
+		self.direWeaknessAbility:ApplyDataDrivenModifier( self.king, self.king, "dire_weakness_modifier", {duration=5} )
+	end
 	-- hide victory conditions, start progressbar, announce start of game
 	if (self.secondsPassed == 1) then
 		self.victoryCondition1:CompleteQuest()

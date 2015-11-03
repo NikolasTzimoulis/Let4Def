@@ -36,7 +36,11 @@
 		"BaseClass"             "ability_datadriven"
 		"AbilityBehavior"       "DOTA_ABILITY_BEHAVIOR_PASSIVE"
 		"AbilityTextureName"    ""
-	 
+		
+		"precache"
+		{
+			"particle" "particles/units/heroes/hero_abaddon/abaddon_aphotic_shield_explosion.vpcf"
+		}
 		// Modifiers
 		//-------------------------------------------------------------------------------------------------------------
 		"Modifiers"
@@ -48,10 +52,14 @@
 				{
 					"AttachEffect"
 					{
-						"Target" "CASTER"
-						"EffectName" "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf"
-						"EffectAttachType" "attach_origin"
-						"EffectLifeDurationScale" "1"
+						 "EffectName" "particles/units/heroes/hero_abaddon/abaddon_aphotic_shield_explosion.vpcf"
+						 "EffectAttachType" "follow_origin"
+						 "Target" "UNIT"
+						 "ControlPointEntities"
+						{
+							"TARGET" "attach_origin"
+							"TARGET" "attach_origin"
+						}
 					}
 				}
 			}
