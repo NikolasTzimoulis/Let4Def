@@ -7,8 +7,9 @@ end
 function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
-	PrecacheResource("soundfile", "soundevents/music/game_sounds_stingers_diretide.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
+	PrecacheResource("particle", "particles/items_fx/aura_hp_cap_ring.vpcf", context)
+	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", context)
 end
 
 -- Create the game mode when we activate
@@ -48,6 +49,7 @@ function CLet4Def:InitGameMode()
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
+	self.lastHurtAnnouncement = -1000
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
@@ -69,6 +71,7 @@ function CLet4Def:InitGameMode()
 	-- listen to some game events
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
+	ListenToGameEvent( "entity_hurt", Dynamic_Wrap( CLet4Def, 'OnEntityHurt' ), self )
 end
 
 -- Evaluate the state of the game
@@ -97,7 +100,7 @@ end
 
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
-	-- hide victory conditions and start progressbar
+	-- hide victory conditions, start progressbar, announce start of game
 	if (self.secondsPassed == 1) then
 		self.victoryCondition1:CompleteQuest()
 		self.victoryCondition2:CompleteQuest()
@@ -108,46 +111,48 @@ function CLet4Def:DoOncePerSecond()
 		self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
 		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_21", DOTA_TEAM_GOODGUYS)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_22", DOTA_TEAM_BADGUYS)
 	end
 	-- Display messages about how much time remains
 	local timeRemaining = (math.ceil(self.timeLimit) - self.secondsPassed)
 	if timeRemaining == 0 then
 		GameRules:SendCustomMessage("time_up", 0, 0)
 	elseif timeRemaining == 1 then
-		EmitGlobalSound("announcer_ann_custom_countdown_01")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_01")
 	elseif timeRemaining == 2 then
-		EmitGlobalSound("announcer_ann_custom_countdown_02")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_02")
 	elseif timeRemaining == 3 then
-		EmitGlobalSound("announcer_ann_custom_countdown_03")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_03")
 	elseif timeRemaining == 4 then
-		EmitGlobalSound("announcer_ann_custom_countdown_04")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_04")
 	elseif timeRemaining == 5 then
-		EmitGlobalSound("announcer_ann_custom_countdown_05")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_05")
 	elseif timeRemaining == 6 then
-		EmitGlobalSound("announcer_ann_custom_countdown_06")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_06")
 	elseif timeRemaining == 7 then
-		EmitGlobalSound("announcer_ann_custom_countdown_07")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_07")
 	elseif timeRemaining == 8 then
-		EmitGlobalSound("announcer_ann_custom_countdown_08")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_08")
 	elseif timeRemaining == 9 then
-		EmitGlobalSound("announcer_ann_custom_countdown_09")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_09")
 	elseif timeRemaining == 10 then
-		EmitGlobalSound("announcer_ann_custom_countdown_10")
+		EmitAnnouncerSound("announcer_ann_custom_countdown_10")
 	elseif timeRemaining == 30 then
-		EmitGlobalSound("announcer_ann_custom_timer_sec_30")
+		EmitAnnouncerSound("announcer_ann_custom_timer_sec_30")
 	elseif timeRemaining == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
 	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
 		local minutesRemaining = math.round((self.timeLimit - self.secondsPassed)/60)
 		GameRules:SendCustomMessage("x_minutes",0,  minutesRemaining)
 		if minutesRemaining == 15 then
-			EmitGlobalSound("announcer_ann_custom_timer_15")
+			EmitAnnouncerSound("announcer_ann_custom_timer_15")
 		elseif minutesRemaining == 10 then
-			EmitGlobalSound("announcer_ann_custom_timer_10")
+			EmitAnnouncerSound("announcer_ann_custom_timer_10")
 		elseif minutesRemaining == 5 then
-			EmitGlobalSound("announcer_ann_custom_timer_05")
+			EmitAnnouncerSound("announcer_ann_custom_timer_05")
 		elseif minutesRemaining == 2 then
-			EmitGlobalSound("announcer_ann_custom_timer_02")
+			EmitAnnouncerSound("announcer_ann_custom_timer_02")
 		end
 	end
 	-- If time is up, game over for dire
@@ -184,6 +189,8 @@ function CLet4Def:DoOncePerSecond()
 					unit:MoveToTargetToAttack(self.king)
 					GameRules:SendCustomMessage("roshan_control", 0, 0)
 					EmitGlobalSound("RoshanDT.Scream")
+					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_41", DOTA_TEAM_BADGUYS)
+					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_29", DOTA_TEAM_GOODGUYS)
 				end
 			elseif hpCap > 0.99*unit:GetMaxHealth() then
 				unit:RemoveModifierByName("dire_weakness_modifier")
@@ -237,20 +244,24 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:IsRealHero() then
 		-- Get dire hero to level 25
 		if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
-			for _ = 1, 24 do
-				spawnedUnit:HeroLevelUp(false)
-			end
-			-- remember dire hero since we need this information elsewhere
-			if not IsValidEntity(self.king) then
-				self.king = spawnedUnit	
-			end
-			-- give dire control of units that were spawned before the dire hero
-			for _, unit in pairs(self.controlLaterList) do 
-				self:giveDireControl(unit)
-			end 
-			-- tip for dire
-			if self.secondsPassed == 0 then
-				ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+			if not spawnedUnit:IsClone() then
+				for _ = 1, 24 do
+					spawnedUnit:HeroLevelUp(false)
+				end
+				-- remember dire hero since we need this information elsewhere
+				if not IsValidEntity(self.king) then
+					self.king = spawnedUnit	
+				end
+				-- give him the hp cap removal aura
+				self.direWeaknessAbility:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
+				-- give dire control of units that were spawned before the dire hero
+				for _, unit in pairs(self.controlLaterList) do 
+					self:giveDireControl(unit)
+				end 
+				-- tip for dire
+				if self.secondsPassed == 0 then
+					ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+				end
 			end
 			-- make dire hero model bigger
 			spawnedUnit:SetModelScale(1.2)
@@ -294,6 +305,7 @@ end
 function CLet4Def:OnEntityKilled( event )
 	local killedUnit = EntIndexToHScript( event.entindex_killed )
 	local killedTeam = killedUnit:GetTeam()
+	local attackerTeam = EntIndexToHScript( event.entindex_attacker ):GetTeam()
 	-- if a hero is killed...
 	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating() and not killedUnit:IsClone()) then
 		-- if their hero is killed, game over for dire
@@ -309,16 +321,37 @@ function CLet4Def:OnEntityKilled( event )
 	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and IsValidEntity(self.king)) then
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
 		GameRules:SendCustomMessage("tower_gold", 0, self.towerExtraBounty)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_20", DOTA_TEAM_BADGUYS)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_26", DOTA_TEAM_GOODGUYS)
 	end
 	-- if rosh is killed, make him drop his items
 	if killedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		GameRules:SendCustomMessage("roshan_killed", 0, 0)
+		if (attackerTeam == DOTA_TEAM_GOODGUYS) then
+			EmitAnnouncerSound("announcer_announcer_roshan_fallen_rad")
+		elseif (attackerTeam == DOTA_TEAM_BADGUYS) then
+			EmitAnnouncerSound("announcer_announcer_roshan_fallen_dire")
+		end
 		for itemSlot = 0, 5, 1 do 
 			local item = killedUnit:GetItemInSlot( itemSlot ) 
 			if IsValidEntity(item) then 
 				CreateItemOnPositionSync(killedUnit:GetOrigin(), CreateItem(item:GetName() , nil, nil)) 
 			end
 		end		
+	end
+end
+
+--- Every time an NPC is dealt damage do this:
+function CLet4Def:OnEntityHurt( event )
+	local hurtUnit = EntIndexToHScript( event.entindex_killed )
+	if self.secondsPassed - self.lastHurtAnnouncement > 10 then
+		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
+			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
+			self.lastHurtAnnouncement = self.secondsPassed
+		elseif (hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
+			EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_02", DOTA_TEAM_BADGUYS)
+			self.lastHurtAnnouncement = self.secondsPassed
+		end
 	end
 end
 

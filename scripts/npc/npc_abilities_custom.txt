@@ -35,7 +35,7 @@
 		//-------------------------------------------------------------------------------------------------------------
 		"BaseClass"             "ability_datadriven"
 		"AbilityBehavior"       "DOTA_ABILITY_BEHAVIOR_PASSIVE"
-		"AbilityTextureName"    "skeleton_king_reincarnation"
+		"AbilityTextureName"    ""
 	 
 		// Modifiers
 		//-------------------------------------------------------------------------------------------------------------
@@ -43,7 +43,31 @@
 		{
 			"dire_weakness_modifier"
 			{
-				"TextureName"    "skeleton_king_reincarnation"
+				"TextureName"    "doom_bringer_doom"
+				"OnDestroy"
+				{
+					"AttachEffect"
+					{
+						"Target" "CASTER"
+						"EffectName" "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf"
+						"EffectAttachType" "attach_origin"
+						"EffectLifeDurationScale" "1"
+					}
+				}
+			}
+			"dire_strength_modifier"
+			{
+				"TextureName"    " rubick_empty1"
+				"OnCreated"
+				{
+					"AttachEffect"
+					{
+						"Target" "CASTER"
+						"EffectName" "particles/items_fx/aura_hp_cap_ring.vpcf"
+						"EffectAttachType" "follow_origin"
+						"EffectLifeDurationScale" "1"
+					}
+				}
 			}
 		}
 	}
