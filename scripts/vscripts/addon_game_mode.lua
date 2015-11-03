@@ -45,8 +45,9 @@ function CLet4Def:InitGameMode()
 	self.xpSoFar = 0
 	self.spawnedList = {}
 	self.controlLaterList = {}
+	self.latePickPlayers = {}
 	self.king = nil
-	self.checkHeroesPicked = false
+	self.checkHeroesPicked = false	
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
@@ -77,18 +78,30 @@ end
 
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and not self.checkHeroesPicked then
-		-- force random heroes on radiant if they do not select their heroes in time
-		self.checkHeroesPicked = true
+	if GameRules:State_Get() >  DOTA_GAMERULES_STATE_HERO_SELECTION and not self.checkHeroesPicked then
+		-- find radiant players who pick heroes after dire
+		self.checkHeroesPicked = true	
+		self.latePickPlayers = {}
 		for playerid = 0, DOTA_MAX_PLAYERS do
 			if PlayerResource:IsValidPlayer(playerid) then
 				player = PlayerResource:GetPlayer(playerid)
-				if player ~= nil and not PlayerResource:HasSelectedHero(playerid) and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
-					player:MakeRandomHeroSelection()
+				if player ~= nil and not PlayerResource:HasSelectedHero(playerid) then
+					if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+						self.latePickPlayers[playerid] = true
+					elseif PlayerResource:GetTeam(playerid) == DOTA_TEAM_BADGUYS then
+						self.checkHeroesPicked = false
+					end
 				end
 			end
 		end
-	elseif GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
+		if self.checkHeroesPicked then
+			for playerid, i in pairs(self.latePickPlayers) do
+				EmitAnnouncerSoundForPlayer("announcer_ann_custom_sports_04", playerid)
+				PlayerResource:ModifyGold(playerid, -1000,  false, DOTA_ModifyGold_SelectionPenalty )
+			end
+		end
+	end
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
