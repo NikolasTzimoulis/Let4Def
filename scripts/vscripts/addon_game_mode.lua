@@ -252,9 +252,6 @@ function CLet4Def:OnNPCSpawned( event )
 		-- Get dire hero to level 25
 		if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
 			if not spawnedUnit:IsClone() then
-				for _ = 1, 24 do
-					spawnedUnit:HeroLevelUp(false)
-				end
 				MaxAbilities(spawnedUnit)
 				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", DOTA_TEAM_BADGUYS)
 				-- remember dire hero since we need this information elsewhere
@@ -379,13 +376,14 @@ function CLet4Def:giveDireControl(unit)
 end
 
 function MaxAbilities( hero )
+	for _ = 1, 24 do
+		hero:HeroLevelUp(false)
+	end
     for i=0, hero:GetAbilityCount()-1 do
         local abil = hero:GetAbilityByIndex(i)
-        if abil ~= nil then
-			for i=0, abil:GetMaxLevel()-1 do
-                hero:UpgradeAbility(abil)
-            end
-        end
+        while abil ~= nil and abil:GetLevel() < abil:GetMaxLevel() do
+			hero:UpgradeAbility(abil)
+		end
     end
 end
 
