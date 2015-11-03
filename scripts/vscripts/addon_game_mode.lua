@@ -142,6 +142,8 @@ function CLet4Def:DoOncePerSecond()
 		EmitAnnouncerSound("announcer_ann_custom_timer_sec_30")
 	elseif timeRemaining == 60 then
 		GameRules:SendCustomMessage("1_minute", 0, 0)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_33", DOTA_TEAM_BADGUYS)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_29", DOTA_TEAM_GOODGUYS)
 	elseif (math.round(self.timeLimit) - self.secondsPassed) % 60 == 0 then
 		local minutesRemaining = math.round((self.timeLimit - self.secondsPassed)/60)
 		GameRules:SendCustomMessage("x_minutes",0,  minutesRemaining)
@@ -249,6 +251,7 @@ function CLet4Def:OnNPCSpawned( event )
 					spawnedUnit:HeroLevelUp(false)
 				end
 				MaxAbilities(spawnedUnit)
+				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", DOTA_TEAM_BADGUYS)
 				-- remember dire hero since we need this information elsewhere
 				if not IsValidEntity(self.king) then
 					self.king = spawnedUnit	
