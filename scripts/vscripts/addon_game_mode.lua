@@ -248,6 +248,7 @@ function CLet4Def:OnNPCSpawned( event )
 				for _ = 1, 24 do
 					spawnedUnit:HeroLevelUp(false)
 				end
+				MaxAbilities(spawnedUnit)
 				-- remember dire hero since we need this information elsewhere
 				if not IsValidEntity(self.king) then
 					self.king = spawnedUnit	
@@ -367,6 +368,17 @@ function CLet4Def:giveDireControl(unit)
 	elseif not IsValidEntity(self.king) then
 		table.insert(self.controlLaterList, unit)
 	end
+end
+
+function MaxAbilities( hero )
+    for i=0, hero:GetAbilityCount()-1 do
+        local abil = hero:GetAbilityByIndex(i)
+        if abil ~= nil then
+			for i=0, abil:GetMaxLevel()-1 do
+                hero:UpgradeAbility(abil)
+            end
+        end
+    end
 end
 
 function math.sign(x)
