@@ -87,9 +87,7 @@ function CLet4Def:OnThink()
 		end
 		GameRules:MakeTeamLose(self.losers)
 	end
-	if  GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and not self.checkHeroesPicked then
-		self:MonitorHeroPicks()
-	elseif GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
