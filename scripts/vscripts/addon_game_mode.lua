@@ -45,7 +45,6 @@ function CLet4Def:InitGameMode()
 	self.xpSoFar = 0
 	self.spawnedList = {}
 	self.controlLaterList = {}
-	self.latePickPlayers = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
 	self.radiantPlayerCount = 4
@@ -55,6 +54,7 @@ function CLet4Def:InitGameMode()
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
+	self.losers = nil
 	-- generate tips
 	self.sizeTipsRadiant = 14
 	self.sizeTipsDire = 14
@@ -78,30 +78,18 @@ end
 
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
-	if GameRules:State_Get() >  DOTA_GAMERULES_STATE_HERO_SELECTION and not self.checkHeroesPicked then
-		-- find radiant players who pick heroes after dire
-		self.checkHeroesPicked = true	
-		self.latePickPlayers = {}
-		for playerid = 0, DOTA_MAX_PLAYERS do
-			if PlayerResource:IsValidPlayer(playerid) then
-				player = PlayerResource:GetPlayer(playerid)
-				if player ~= nil and not PlayerResource:HasSelectedHero(playerid) then
-					if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
-						self.latePickPlayers[playerid] = true
-					elseif PlayerResource:GetTeam(playerid) == DOTA_TEAM_BADGUYS then
-						self.checkHeroesPicked = false
-					end
-				end
+	-- check if game is over
+	if self.losers ~= nil and GameRules:State_Get() ~= DOTA_GAMERULES_STATE_POST_GAME then
+        for _, ancient in pairs(Entities:FindAllByClassname('npc_dota_fort')) do
+            if ancient:GetTeamNumber() == DOTA_TEAM_BADGUYS then
+				ancient:ForceKill(false)
 			end
 		end
-		if self.checkHeroesPicked then
-			for playerid, i in pairs(self.latePickPlayers) do
-				EmitAnnouncerSoundForPlayer("announcer_ann_custom_sports_04", playerid)
-				PlayerResource:ModifyGold(playerid, -1000,  false, DOTA_ModifyGold_SelectionPenalty )
-			end
-		end
+		GameRules:MakeTeamLose(self.losers)
 	end
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
+	if  GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and not self.checkHeroesPicked then
+		self:MonitorHeroPicks()
+	elseif GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 			self:DoOncePerSecond()			
@@ -175,7 +163,7 @@ function CLet4Def:DoOncePerSecond()
 	if self.secondsPassed >= self.timeLimit then
 		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
 		self.gameOverTimer:CompleteQuest()
-		GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
+		self.losers = DOTA_TEAM_BADGUYS
 	end
 	-- give everyone some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
@@ -330,7 +318,7 @@ function CLet4Def:OnEntityKilled( event )
 		-- if their hero is killed, game over for dire
 		if killedTeam == DOTA_TEAM_BADGUYS then
 			GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
-			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
+			self.losers = DOTA_TEAM_BADGUYS
 		-- if radiant hero is killed, give them a short respawn time
 		elseif killedTeam == DOTA_TEAM_GOODGUYS then 
 			killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
@@ -363,7 +351,7 @@ end
 --- Every time an NPC is dealt damage do this:
 function CLet4Def:OnEntityHurt( event )
 	local hurtUnit = EntIndexToHScript( event.entindex_killed )
-	if self.secondsPassed - self.lastHurtAnnouncement > 10 then
+	if self.secondsPassed - self.lastHurtAnnouncement > 5 then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
 			self.lastHurtAnnouncement = self.secondsPassed
@@ -398,6 +386,22 @@ function MaxAbilities( hero )
 			hero:UpgradeAbility(abil)
 		end
     end
+end
+
+function CLet4Def:MonitorHeroPicks()
+	-- find radiant players who did not pick their heroes in time
+	self.checkHeroesPicked = true
+	for playerid = 0, DOTA_MAX_PLAYERS do
+		if PlayerResource:IsValidPlayer(playerid) then
+			player = PlayerResource:GetPlayer(playerid)
+			if player ~= nil and not PlayerResource:HasSelectedHero(playerid) then
+				if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+					EmitAnnouncerSoundForPlayer("announcer_ann_custom_sports_04", playerid)
+					PlayerResource:ModifyGold(playerid, -1000,  false, DOTA_ModifyGold_SelectionPenalty )
+				end
+			end
+		end
+	end
 end
 
 function math.sign(x)
