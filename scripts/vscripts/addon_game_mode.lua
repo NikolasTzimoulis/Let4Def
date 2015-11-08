@@ -87,6 +87,10 @@ function CLet4Def:OnThink()
 		end
 		GameRules:MakeTeamLose(self.losers)
 	end
+	-- check if radiant players were late to pick heroes
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
+		self:MonitorHeroPicks()
+	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
 			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
@@ -374,6 +378,20 @@ function CLet4Def:giveDireControl(unit)
 	end
 end
 
+function CLet4Def:MonitorHeroPicks()
+	-- find radiant players who did not pick their heroes in time
+	if not self.checkHeroesPicked then
+		self.checkHeroesPicked = true
+		for playerid = 0, DOTA_MAX_PLAYERS do
+			if PlayerResource:IsValidPlayer(playerid) and not PlayerResource:HasSelectedHero(playerid) and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+				-- punish them
+				EmitAnnouncerSoundForPlayer("announcer_ann_custom_sports_04", playerid)
+				PlayerResource:ModifyGold(playerid, -PlayerResource:GetGold(playerid),  false, DOTA_ModifyGold_SelectionPenalty)
+			end
+		end
+	end
+end
+
 function MaxAbilities( hero )
 	for _ = 1, 24 do
 		hero:HeroLevelUp(false)
@@ -384,22 +402,6 @@ function MaxAbilities( hero )
 			hero:UpgradeAbility(abil)
 		end
     end
-end
-
-function CLet4Def:MonitorHeroPicks()
-	-- find radiant players who did not pick their heroes in time
-	self.checkHeroesPicked = true
-	for playerid = 0, DOTA_MAX_PLAYERS do
-		if PlayerResource:IsValidPlayer(playerid) then
-			player = PlayerResource:GetPlayer(playerid)
-			if player ~= nil and not PlayerResource:HasSelectedHero(playerid) then
-				if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
-					EmitAnnouncerSoundForPlayer("announcer_ann_custom_sports_04", playerid)
-					PlayerResource:ModifyGold(playerid, -1000,  false, DOTA_ModifyGold_SelectionPenalty )
-				end
-			end
-		end
-	end
 end
 
 function math.sign(x)
