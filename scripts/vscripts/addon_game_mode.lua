@@ -51,7 +51,7 @@ function CLet4Def:InitGameMode()
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
-	self.lastHurtAnnouncement = -1000
+	self.lastHurtAnnouncement = -math.huge
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
@@ -95,7 +95,7 @@ function CLet4Def:OnThink()
 	end
 	-- check if radiant players were late to pick heroes
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
-		--self:MonitorHeroPicks()
+		self:MonitorHeroPicks()
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
@@ -402,12 +402,14 @@ function MaxAbilities( hero )
 	for _ = 1, 24 do
 		hero:HeroLevelUp(false)
 	end
-    for i=0, hero:GetAbilityCount()-1 do
-        local abil = hero:GetAbilityByIndex(i)
-        while abil ~= nil and abil:GetLevel() < abil:GetMaxLevel() do
-			hero:UpgradeAbility(abil)
+	for i=0, hero:GetAbilityCount()-1 do	
+		local abil = hero:GetAbilityByIndex(i)
+		if abil ~= nil then			
+			abil:SetLevel(abil:GetMaxLevel())
+			abil:MarkAbilityButtonDirty()
 		end
-    end
+	end
+	--hero:SetAbilityPoints(0)
 end
 
 function math.sign(x)
