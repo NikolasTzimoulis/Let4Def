@@ -47,7 +47,7 @@ function CLet4Def:InitGameMode()
 	self.controlLaterList = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
-	self.bots = true
+	self.bots = false
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
@@ -89,7 +89,7 @@ function CLet4Def:OnThink()
 		GameRules:MakeTeamLose(self.losers)
 	end
 	if not self.bots then
-		SendToServerConsole("sv_cheats 1;dota_bot_populate")
+		SendToServerConsole("dota_bot_populate")
 		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
 		self.bots = true
 	end
