@@ -22,7 +22,8 @@ end
 function CLet4Def:InitGameMode()
 	print("Starting Let 4 Def...")
 	-- game balance parameters
-	self.towerExtraBounty = 3000
+	self.towerExtraBounty = 2500
+	self.towerExtraBountyIncrease = 100
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
 	self.timeLimitBase = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
@@ -88,14 +89,15 @@ function CLet4Def:OnThink()
 		end
 		GameRules:MakeTeamLose(self.losers)
 	end
-	if not self.bots then
-		SendToServerConsole("dota_bot_populate")
-		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
-		self.bots = true
-	end
-	-- check if radiant players were late to pick heroes
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
+		-- punish late pickers
 		self:MonitorHeroPicks()
+		-- add bots
+		if not self.bots then
+			SendToServerConsole("dota_bot_populate")
+			GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
+			self.bots = true
+		end
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
@@ -340,6 +342,7 @@ function CLet4Def:OnEntityKilled( event )
 	if (killedUnit:IsTower() and killedTeam == DOTA_TEAM_GOODGUYS and IsValidEntity(self.king)) then
 		self.king:ModifyGold(self.towerExtraBounty, true,  DOTA_ModifyGold_Building)
 		GameRules:SendCustomMessage("tower_gold", 0, self.towerExtraBounty)
+		self.towerExtraBounty = self.towerExtraBounty + self.towerExtraBountyIncrease
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_20", DOTA_TEAM_BADGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_26", DOTA_TEAM_GOODGUYS)
 	end
