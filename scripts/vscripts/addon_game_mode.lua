@@ -29,17 +29,17 @@ function CLet4Def:InitGameMode()
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
-	self.pregametime = 30	--how long should the pre-game period last
 	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
-	GameRules:SetHeroSelectionTime(30)
-	GameRules:SetPreGameTime(self.pregametime)
+	GameRules:SetHeroSelectionTime(15)
+	GameRules:SetPreGameTime(15)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
 	-- initialise stuff
+	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
 	self.secondsPassed = 0
 	self.xpSoFar = 0
@@ -112,6 +112,7 @@ end
 function CLet4Def:DoOncePerSecond()
 	-- hide victory conditions, start progressbar, announce start of game
 	if (self.secondsPassed == 1) then
+		GameRules:GetGameModeEntity():SetAnnouncerDisabled(false)
 		self.victoryCondition1:CompleteQuest()
 		self.victoryCondition2:CompleteQuest()
 		self.victoryCondition3:CompleteQuest()
