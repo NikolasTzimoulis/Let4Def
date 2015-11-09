@@ -113,12 +113,6 @@ function CLet4Def:DoOncePerSecond()
 		self.victoryCondition1:CompleteQuest()
 		self.victoryCondition2:CompleteQuest()
 		self.victoryCondition3:CompleteQuest()
-		--self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
-		--self.gameOverTimer.EndTime = 30 
-		--self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
-		--self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
-		--self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
-		--self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_21", DOTA_TEAM_GOODGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_22", DOTA_TEAM_BADGUYS)
 	end
@@ -168,7 +162,6 @@ function CLet4Def:DoOncePerSecond()
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
 		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
-		self.gameOverTimer:CompleteQuest()
 		self.losers = DOTA_TEAM_BADGUYS
 	end
 	-- give radiant some xp, enough to reach a high level by 20 minutes
