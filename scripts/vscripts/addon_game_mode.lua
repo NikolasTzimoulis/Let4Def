@@ -22,8 +22,8 @@ end
 function CLet4Def:InitGameMode()
 	print("Starting Let 4 Def...")
 	-- game balance parameters
-	self.towerExtraBounty = 2500
-	self.towerExtraBountyIncrease = 100
+	self.towerExtraBounty = 2000
+	self.towerExtraBountyIncrease = 200
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
 	self.timeLimitBase = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
