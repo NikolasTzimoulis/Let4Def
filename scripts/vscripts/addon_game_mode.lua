@@ -57,6 +57,7 @@ function CLet4Def:InitGameMode()
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.losers = nil
+	self:DispatchChangeTimeLimitEvent()
 	-- generate tips
 	self.sizeTipsRadiant = 14
 	self.sizeTipsDire = 14
@@ -93,11 +94,7 @@ function CLet4Def:OnThink()
 		-- punish late pickers
 		self:MonitorHeroPicks()
 		-- add bots
-		if not self.bots then
-			SendToServerConsole("dota_bot_populate")
-			GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
-			self.bots = true
-		end
+		self:EnableBots()
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
@@ -118,12 +115,12 @@ function CLet4Def:DoOncePerSecond()
 		self.victoryCondition1:CompleteQuest()
 		self.victoryCondition2:CompleteQuest()
 		self.victoryCondition3:CompleteQuest()
-		self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
-		self.gameOverTimer.EndTime = 30 
-		self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
-		self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
-		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
-		self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
+		--self.gameOverTimer = SpawnEntityFromTableSynchronous( "quest", { name = "timer", title = "timer" } )
+		--self.gameOverTimer.EndTime = 30 
+		--self.gameOverProgressbar = SpawnEntityFromTableSynchronous( "subquest_base", {show_progress_bar = true, progress_bar_hue_shift = -119 } )
+		--self.gameOverTimer:AddSubquest( self.gameOverProgressbar )
+		--self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit )
+		--self.gameOverProgressbar:SetTextReplaceValue( SUBQUEST_TEXT_REPLACE_VALUE_TARGET_VALUE, self.timeLimit )
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_21", DOTA_TEAM_GOODGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_22", DOTA_TEAM_BADGUYS)
 	end
@@ -247,6 +244,7 @@ function CLet4Def:DoOncePerSecond()
 				-- change difficulty
 				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
 				self.timeLimit = self.timeLimit + math.sign(newRadiantPlayerCount-self.radiantPlayerCount) * math.abs(newRadiantPlayerCount-self.radiantPlayerCount)/5 * (self.timeLimitBase  - self.secondsPassed)
+				self:DispatchChangeTimeLimitEvent()
 				GameRules:SendCustomMessage("difficulty_changed", 0, 0)
 				GameRules:SendCustomMessage("new_time", 0, math.round(self.timeLimit/60))
 				EmitGlobalSound("ui.npe_objective_given")
@@ -257,7 +255,7 @@ function CLet4Def:DoOncePerSecond()
 		self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	end
 	-- update progress bar
-	self.gameOverProgressbar:SetTextReplaceValue( QUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit-self.secondsPassed )
+	--self.gameOverProgressbar:SetTextReplaceValue( QUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit-self.secondsPassed )
 end
 
 -- Every time an npc is spawned do this:
@@ -403,6 +401,27 @@ function CLet4Def:MonitorHeroPicks()
 			end
 		end
 	end
+end
+
+
+function CLet4Def:EnableBots()
+	if not self.bots then
+		self.bots = true
+		SendToServerConsole("dota_bot_populate")
+		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
+		GameRules:GetGameModeEntity():SetBotsInLateGame(true)
+	end
+	for _, hero in pairs( HeroList:GetAllHeroes() ) do
+		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS then
+			hero:SetBotDifficulty(3)
+		elseif hero:GetTeamNumber() == DOTA_TEAM_BADGUYS then
+			hero:SetBotDifficulty(4)
+		end
+	end
+end
+
+function CLet4Def:DispatchChangeTimeLimitEvent()
+	CustomGameEventManager:Send_ServerToAllClients( "time_limit_change", {timelimit = self.timeLimit})
 end
 
 function MaxAbilities( hero )
