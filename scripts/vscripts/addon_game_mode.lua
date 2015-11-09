@@ -402,14 +402,17 @@ function MaxAbilities( hero )
 	for _ = 1, 24 do
 		hero:HeroLevelUp(false)
 	end
-	for i=0, hero:GetAbilityCount()-1 do	
-		local abil = hero:GetAbilityByIndex(i)
-		if abil ~= nil then			
-			abil:SetLevel(abil:GetMaxLevel())
-			abil:MarkAbilityButtonDirty()
+    for i=0, hero:GetAbilityCount()-1 do
+        local abil = hero:GetAbilityByIndex(i)
+        while abil ~= nil and abil:CanAbilityBeUpgraded() == 0 and abil:GetLevel() < abil:GetMaxLevel() do
+			local oldlevel = abil:GetLevel()
+			hero:UpgradeAbility(abil)
+			if oldlevel == abil:GetLevel() then 
+				--fix problematic abilities
+				abil:SetLevel(abil:GetMaxLevel())
+			end
 		end
-	end
-	--hero:SetAbilityPoints(0)
+    end
 end
 
 function math.sign(x)
