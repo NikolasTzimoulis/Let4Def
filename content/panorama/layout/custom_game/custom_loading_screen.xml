@@ -1,0 +1,11 @@
+<root>
+	<styles>
+		<include src="file://{resources}/styles/custom_game/custom_loading_screen.css" />
+	</styles>
+  	<Panel class="AddonLoadingRoot">
+		<Panel id="seq" >
+            <Image id="seq_2_hand" src="file://{images}/custom_game/loading_screen/hand.png" />
+            <Image id="seq_3_logo" src="file://{images}/custom_game/loading_screen/logo.png" />
+        </Panel>
+	</Panel>
+</root>

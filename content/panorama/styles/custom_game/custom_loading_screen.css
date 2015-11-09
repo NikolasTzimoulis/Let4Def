@@ -1,0 +1,67 @@
+@define TotalLength: 15s;
+@define TimingFunc: linear;
+@define IterationCount: 1;
+
+.AddonLoadingRoot
+{
+	background-image: url("file://{images}/custom_game/loading_screen/background.png");
+	background-size: cover;
+}
+
+#seq
+{
+	width: 100%;
+    height: 100%;
+	//background-size: 100% 100%;
+    overflow: squish;
+    //pre-transform-scale2d: 1.5, 1.5;
+}
+
+@keyframes 'x' {}
+
+#seq_2_hand
+{
+  animation-name: seq_hand_anim;
+  animation-duration: TotalLength;
+  animation-timing-function: ease;
+  animation-iteration-count: IterationCount;
+  pre-transform-scale2d: 2.0, 2.0;
+}
+
+@keyframes 'seq_hand_anim'
+{
+  0%
+  {
+    transform: translateY( 500px );
+    //pre-transform-scale2d: 1.5, 1.5;
+  }
+
+  100%
+  {
+  }
+}
+
+#seq_3_logo
+{
+  width: 40%;
+  height: 40%;
+  animation-name: seq_logo_anim;
+  animation-duration: TotalLength;
+  animation-timing-function: ease;
+  animation-iteration-count: IterationCount;
+  //pre-transform-scale2d: 1.5, 1.5;
+}
+
+@keyframes 'seq_logo_anim'
+{
+  0%
+  {
+    transform: translateY( -500px );
+    //pre-transform-scale2d: 0.5, 0.5;
+  }
+
+  100%
+  {
+  }
+}
+

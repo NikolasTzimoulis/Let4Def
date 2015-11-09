@@ -1,0 +1,75 @@
+.RoundTimerRoot {
+	margin-top: 0px;
+    margin-left: 0px;
+	
+}
+
+#RoundTimerContainer {
+    width: 300px;
+    height: 35px;
+    margin-top: 5px;
+    margin-left: 1100px;
+}
+
+.AspectRatio4x3 #RoundTimerContainer,
+.AspectRatio5x4 #RoundTimerContainer
+ {
+    margin-left: 820px;
+}
+
+#RoundTimerContainer #RoundTimerBar {
+    width: 100%;
+    height: 12px;
+    vertical-align: bottom;
+    background-color: #333;
+    border-radius: 6px;
+    box-shadow: 0 0 4px #777777;
+}
+
+#RoundTimerContainer #RoundTimerBarPercentage {
+    background-color: #ffd700;
+    height: 100%;
+    border-radius: 6px;
+}
+
+#RoundTimerTextContainer {
+    width: 100%;
+    height: 20px;
+    overflow: clip;
+}
+
+#RoundTimerTextContainer Label {
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    line-height: 18px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+#RoundTimerTextHeader {
+    flow-children: right;
+}
+
+#RoundTimerTextHeader Label {
+    margin-right: 5px;
+}
+
+#RoundTimerTextContainer #RoundTimerRoundName {
+    color: #ccc;
+}
+
+.RoundType.flying {
+    color: #ff8800;
+}
+
+.RoundType.boss {
+    color: #be7fe5;
+}
+
+#RoundTimerTextContainer #RoundTimerCountDownText {
+    horizontal-align: right;
+}
+
+#NextRoundTimerTextContainer {
+    margin-top: 50px;
+}
