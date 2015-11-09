@@ -48,7 +48,6 @@ function CLet4Def:InitGameMode()
 	self.controlLaterList = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
-	self.bots = false
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
@@ -77,6 +76,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	ListenToGameEvent( "entity_hurt", Dynamic_Wrap( CLet4Def, 'OnEntityHurt' ), self )
+	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'EnableBots' ), self )
 end
 
 -- Evaluate the state of the game
@@ -93,8 +93,6 @@ function CLet4Def:OnThink()
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 		-- punish late pickers
 		self:MonitorHeroPicks()
-		-- add bots
-		self:EnableBots()
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
 		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
@@ -403,10 +401,8 @@ function CLet4Def:MonitorHeroPicks()
 	end
 end
 
-
-function CLet4Def:EnableBots()
-	if not self.bots then
-		self.bots = true
+function CLet4Def:EnableBots(event)
+	if event.text == 'bots' then
 		SendToServerConsole("dota_bot_populate")
 		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
 		GameRules:GetGameModeEntity():SetBotsInLateGame(true)
