@@ -54,7 +54,7 @@ function CLet4Def:InitGameMode()
 	self.lastHurtAnnouncement = -math.huge
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
-	self.direWeaknessAbility = dummy:FindAbilityByName("dire_weakness")
+	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.losers = nil
 	-- generate tips
 	self.sizeTipsRadiant = 14
@@ -173,11 +173,14 @@ function CLet4Def:DoOncePerSecond()
 		self.gameOverTimer:CompleteQuest()
 		self.losers = DOTA_TEAM_BADGUYS
 	end
-	-- give everyone some xp, enough to reach a high level by 20 minutes
+	-- give radiant some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
 	local xpPerSecond = (self.endgameXPTarget - self.xpSoFar) / (self.timeLimit - self.secondsPassed)
 	for _, hero in pairs( allHeroes ) do
-		hero:AddExperience(xpPerSecond, false, true)
+		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS then
+			self.modifiers:ApplyDataDrivenModifier( hero, hero, "xp_aura_modifier", {duration=-1} )
+			hero:AddExperience(xpPerSecond, false, true)
+		end
 	end
 	self.xpSoFar = self.xpSoFar + xpPerSecond
 	-- re-apply weakness on dire units if needed
@@ -191,7 +194,7 @@ function CLet4Def:DoOncePerSecond()
 				if not unit:HasModifier("dire_weakness_modifier") and unit:GetHealth() > 0 then
 					ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_head.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
 				end
-				self.direWeaknessAbility:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
+				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
 				self.spawnedList[unit] = true
 			elseif IsValidEntity(self.king) and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance and unit:HasModifier("dire_weakness_modifier") then
 				unit:RemoveModifierByName("dire_weakness_modifier")
@@ -268,7 +271,7 @@ function CLet4Def:OnNPCSpawned( event )
 					self.king = spawnedUnit	
 				end
 				-- give him the hp cap removal aura
-				self.direWeaknessAbility:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
 				-- give dire control of units that were spawned before the dire hero
 				for _, unit in pairs(self.controlLaterList) do 
 					self:giveDireControl(unit)

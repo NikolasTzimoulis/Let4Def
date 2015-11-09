@@ -29,7 +29,7 @@
 		}
 	}
 
-	"dire_weakness"
+	"modifier_collection"
 	{
 		// General
 		//-------------------------------------------------------------------------------------------------------------
@@ -42,11 +42,15 @@
 		{
 			"dire_weakness_modifier"
 			{
-				"TextureName"    "doom_bringer_doom"
+				"TextureName"    "hp_cap"
+			}
+			"xp_aura_modifier"
+			{
+				"TextureName"    "custom_games_xp_coin"
 			}
 			"dire_strength_modifier"
 			{
-				"TextureName"    " rubick_empty1"
+				"TextureName"    "hp_cap_purge"
 				"OnCreated"
 				{
 					"AttachEffect"

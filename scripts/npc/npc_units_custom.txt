@@ -17,7 +17,7 @@
 		//----------------------------------------------------------------
 		
 		"Ability1"					"dummy_passive"
-		"Ability2"					"dire_weakness"
+		"Ability2"					"modifier_collection"
 		"Ability3"					""			// Ability 3.
 		"Ability4"					""			// Ability 4.
 		"Ability5"					""			// Ability 5.
