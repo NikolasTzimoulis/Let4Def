@@ -12,10 +12,9 @@ var humanTime = function(time) {
     return minutes + ':' + seconds;
 };
 
-
 function UpdateRoundTimer() {
     var secondsPassed = Game.GetDOTATime(false,false);
-    var TimeLeft = TimeLimit - secondsPassed;
+    var TimeLeft = Math.min(TimeLimit, Math.max(TimeLimit - secondsPassed+1, 0) );
     var NextRoundPercent = TimeLeft > 0 ? Math.floor((TimeLeft / TimeLimit) * 10000) / 100 : 0;
 
     $('#RoundTimerCountDownText').text = humanTime(TimeLeft);
@@ -23,7 +22,7 @@ function UpdateRoundTimer() {
 
     $('#RoundTimerRoundText').text = $.Localize('timer');
 
-    $.Schedule(0.5, UpdateRoundTimer);
+    $.Schedule(1.0, UpdateRoundTimer);
 }
 
 function ChangeTimeLimit(event) {

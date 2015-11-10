@@ -31,6 +31,7 @@ function CLet4Def:InitGameMode()
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
+	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
@@ -77,6 +78,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	ListenToGameEvent( "entity_hurt", Dynamic_Wrap( CLet4Def, 'OnEntityHurt' ), self )
 	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'EnableBots' ), self )
+	ListenToGameEvent( "dota_player_gained_level", Dynamic_Wrap( CLet4Def, 'OnLevelUp' ), self )
 end
 
 -- Evaluate the state of the game
@@ -187,12 +189,21 @@ function CLet4Def:DoOncePerSecond()
 				end
 				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
 				self.spawnedList[unit] = true
+				--give rosh back to dire control
+				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_NEUTRALS then
+					self:giveDireControl(unit)
+					unit:Stop()
+					GameRules:SendCustomMessage("roshan_control2", 0, 0)
+					EmitGlobalSound("RoshanDT.Scream")
+					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_30", DOTA_TEAM_BADGUYS)
+					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_32", DOTA_TEAM_GOODGUYS)
+				end
 			elseif IsValidEntity(self.king) and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance and unit:HasModifier("dire_weakness_modifier") then
 				unit:RemoveModifierByName("dire_weakness_modifier")
 				ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
 				-- turn rosh against dire if dire hero comes too close
 				if unit:GetUnitName() == "custom_npc_dota_roshan" then
-					self.spawnedList[unit] = nil
+					--self.spawnedList[unit] = nil
 					unit:SetTeam(DOTA_TEAM_NEUTRALS)
 					unit:SetOwner(nil)
 					unit:SetControllableByPlayer(-1, true)	
@@ -355,7 +366,7 @@ end
 --- Every time an NPC is dealt damage do this:
 function CLet4Def:OnEntityHurt( event )
 	local hurtUnit = EntIndexToHScript( event.entindex_killed )
-	if self.secondsPassed - self.lastHurtAnnouncement > 5 then
+	if self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
 			self.lastHurtAnnouncement = self.secondsPassed
@@ -406,6 +417,12 @@ function CLet4Def:EnableBots(event)
 		elseif hero:GetTeamNumber() == DOTA_TEAM_BADGUYS then
 			hero:SetBotDifficulty(4)
 		end
+	end
+end
+
+function CLet4Def:OnLevelUp(event)
+	if self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency and PlayerResource:GetTeam(event.player) == DOTA_TEAM_GOODGUYS then
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_02", DOTA_TEAM_BADGUYS)
 	end
 end
 
