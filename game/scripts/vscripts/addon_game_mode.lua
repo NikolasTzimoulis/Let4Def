@@ -32,14 +32,6 @@ function CLet4Def:InitGameMode()
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
-	-- base rules
-	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
-	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, 4 )
-	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, 1 )
-	GameRules:SetHeroSelectionTime(15)
-	GameRules:SetPreGameTime(15)
-	GameRules:SetPostGameTime(30)
-	GameRules:SetGoldPerTick (0)
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -74,11 +66,19 @@ function CLet4Def:InitGameMode()
 	self.victoryCondition1 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_1" } )
 	self.victoryCondition2 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_2" } )
 	self.victoryCondition3 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_3" } )		
+	-- base rules
+	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
+	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, self.radiantPlayerCount )
+	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, self.direPlayerCount )
+	GameRules:SetHeroSelectionTime(15)
+	GameRules:SetPreGameTime(15)
+	GameRules:SetPostGameTime(30)
+	GameRules:SetGoldPerTick (0)
 	-- listen to some game events
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	ListenToGameEvent( "entity_hurt", Dynamic_Wrap( CLet4Def, 'OnEntityHurt' ), self )
-	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'EnableBots' ), self )
+	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'OnChat' ), self )
 	ListenToGameEvent( "dota_player_gained_level", Dynamic_Wrap( CLet4Def, 'OnLevelUp' ), self )
 	ListenToGameEvent( "player_reconnected", Dynamic_Wrap( CLet4Def, 'OnReconnect' ), self )
 end
@@ -407,12 +407,16 @@ function CLet4Def:MonitorHeroPicks()
 	end
 end
 
-function CLet4Def:EnableBots(event)
+function CLet4Def:OnChat(event)
 	if event.text == 'bots' then
-		SendToServerConsole("dota_bot_populate")
-		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
-		GameRules:GetGameModeEntity():SetBotsInLateGame(true)
+		self:EnableBots()
 	end
+end
+
+function CLet4Def:EnableBots()
+	SendToServerConsole("dota_bot_populate")
+	GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
+	GameRules:GetGameModeEntity():SetBotsInLateGame(true)
 	for _, hero in pairs( HeroList:GetAllHeroes() ) do
 		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS then
 			hero:SetBotDifficulty(3)
