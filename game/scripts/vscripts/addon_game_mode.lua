@@ -190,7 +190,7 @@ function CLet4Def:DoOncePerSecond()
 				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
 				self.spawnedList[unit] = true
 				--give rosh back to dire control
-				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_NEUTRALS then
+				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_NEUTRALS and IsValidEntity(self.king) then
 					self:giveDireControl(unit)
 					unit:Stop()
 					GameRules:SendCustomMessage("roshan_control2", 0, 0)
@@ -423,6 +423,7 @@ end
 function CLet4Def:OnLevelUp(event)
 	if self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency and PlayerResource:GetTeam(event.player) == DOTA_TEAM_GOODGUYS then
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_02", DOTA_TEAM_BADGUYS)
+		self.lastHurtAnnouncement = self.secondsPassed
 	end
 end
 
