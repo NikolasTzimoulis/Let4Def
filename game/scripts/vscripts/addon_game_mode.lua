@@ -1,4 +1,5 @@
 require("statcollection/init")
+require("libraries/timers")
 
 if CLet4Def == nil then
 	CLet4Def = class({})
@@ -262,16 +263,17 @@ end
 -- Every time an npc is spawned do this:
 function CLet4Def:OnNPCSpawned( event )
 	local spawnedUnit = EntIndexToHScript( event.entindex )
-	if spawnedUnit:IsRealHero() then
-		-- Get dire hero to level 25
+	if spawnedUnit:IsRealHero() then		
 		if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
-			if not spawnedUnit:IsClone() then
-				MaxAbilities(spawnedUnit)
-				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", DOTA_TEAM_BADGUYS)
+			if not IsValidEntity(self.king) then
 				-- remember dire hero since we need this information elsewhere
-				if not IsValidEntity(self.king) then
-					self.king = spawnedUnit	
-				end
+				self.king = spawnedUnit	
+				-- Get dire hero to level 25
+				Timers:CreateTimer( 0.1, function()
+					MaxAbilities(spawnedUnit)
+					return nil
+				end)
+				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", DOTA_TEAM_BADGUYS)
 				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
