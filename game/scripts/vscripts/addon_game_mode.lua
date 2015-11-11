@@ -1,4 +1,4 @@
--- Generated from template
+require("statcollection/init")
 
 if CLet4Def == nil then
 	CLet4Def = class({})
@@ -49,7 +49,7 @@ function CLet4Def:InitGameMode()
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
-	self.losers = nil
+	self.winners = nil
 	self:DispatchChangeTimeLimitEvent()
 	-- generate tips
 	self.sizeTipsRadiant = 14
@@ -86,13 +86,11 @@ end
 -- Evaluate the state of the game
 function CLet4Def:OnThink()
 	-- check if game is over
-	if self.losers ~= nil and GameRules:State_Get() ~= DOTA_GAMERULES_STATE_POST_GAME then
-        for _, ancient in pairs(Entities:FindAllByClassname('npc_dota_fort')) do
-            if ancient:GetTeamNumber() == DOTA_TEAM_BADGUYS then
-				ancient:ForceKill(false)
-			end
-		end
-		GameRules:MakeTeamLose(self.losers)
+	if self.winners ~= nil and GameRules:State_Get() ~= DOTA_GAMERULES_STATE_POST_GAME then
+		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
+		ancient = Entities:FindByName( nil, "dota_badguys_fort" )
+		ancient:ForceKill(false)
+		GameRules:SetGameWinner(self.winners)
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 		-- punish late pickers
@@ -165,8 +163,7 @@ function CLet4Def:DoOncePerSecond()
 	end
 	-- If time is up, game over for dire
 	if self.secondsPassed >= self.timeLimit then
-		GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
-		self.losers = DOTA_TEAM_BADGUYS
+		self.winners = DOTA_TEAM_GOODGUYS
 	end
 	-- give radiant some xp, enough to reach a high level by 20 minutes
 	local allHeroes = HeroList:GetAllHeroes()
@@ -281,6 +278,8 @@ function CLet4Def:OnNPCSpawned( event )
 				for _, unit in pairs(self.controlLaterList) do 
 					self:giveDireControl(unit)
 				end 
+				-- change his colour to red
+				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 0, 0)
 				-- tip for dire
 				if self.secondsPassed == 0 then
 					ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
@@ -333,8 +332,7 @@ function CLet4Def:OnEntityKilled( event )
 	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating() and not killedUnit:IsClone()) then
 		-- if their hero is killed, game over for dire
 		if killedTeam == DOTA_TEAM_BADGUYS then
-			GameRules:GetGameModeEntity():SetFogOfWarDisabled(true)
-			self.losers = DOTA_TEAM_BADGUYS
+			self.winners = DOTA_TEAM_GOODGUYS
 		-- if radiant hero is killed, give them a short respawn time
 		elseif killedTeam == DOTA_TEAM_GOODGUYS then 
 			killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
