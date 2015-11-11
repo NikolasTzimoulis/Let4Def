@@ -37,7 +37,7 @@ function CLet4Def:InitGameMode()
 	self.timeLimit = self.timeLimitBase
 	self.secondsPassed = 0
 	self.xpSoFar = 0
-	self.maxRadiantLevel = 0
+	self.maxRadiantLevel = 1
 	self.spawnedList = {}
 	self.controlLaterList = {}
 	self.king = nil
@@ -427,9 +427,10 @@ function CLet4Def:EnableBots()
 end
 
 function CLet4Def:OnLevelUp(event)
-	if event.level > self.maxRadiantLevel and PlayerResource:GetTeam(event.player) == DOTA_TEAM_GOODGUYS then
+	team = EntIndexToHScript(event.player):GetTeamNumber()
+	if event.level > self.maxRadiantLevel and team == DOTA_TEAM_GOODGUYS then
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_02", DOTA_TEAM_BADGUYS)
-		self.maxRadiantLevel = event.level
+		self.maxRadiantLevel = event.level)
 	end
 end
 
