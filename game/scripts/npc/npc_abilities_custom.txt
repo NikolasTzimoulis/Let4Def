@@ -48,6 +48,10 @@
 			{
 				"TextureName"    "custom_games_xp_coin"
 			}
+			"yolo_modifier"
+			{
+				"TextureName"    "yolo"
+			}
 			"dire_strength_modifier"
 			{
 				"TextureName"    "hp_cap_purge"

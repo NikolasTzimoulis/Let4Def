@@ -272,8 +272,9 @@ function CLet4Def:OnNPCSpawned( event )
 				if not IsValidEntity(self.king) then
 					self.king = spawnedUnit	
 				end
-				-- give him the hp cap removal aura
+				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
 				-- give dire control of units that were spawned before the dire hero
 				for _, unit in pairs(self.controlLaterList) do 
 					self:giveDireControl(unit)
