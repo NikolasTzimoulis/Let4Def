@@ -430,7 +430,7 @@ function CLet4Def:OnLevelUp(event)
 	team = EntIndexToHScript(event.player):GetTeamNumber()
 	if event.level > self.maxRadiantLevel and team == DOTA_TEAM_GOODGUYS then
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_02", DOTA_TEAM_BADGUYS)
-		self.maxRadiantLevel = event.level)
+		self.maxRadiantLevel = event.level
 	end
 end
 
