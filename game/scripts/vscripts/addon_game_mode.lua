@@ -36,11 +36,10 @@ function CLet4Def:InitGameMode()
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
-	self.secondsPassed = 0
+	self.secondsPassed = nil
 	self.xpSoFar = 0
 	self.maxRadiantLevel = 1
 	self.spawnedList = {}
-	self.controlLaterList = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
 	self.radiantPlayerCount = 4
@@ -97,11 +96,11 @@ function CLet4Def:OnThink()
 		-- punish late pickers
 		self:MonitorHeroPicks()
 	end
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS then
-		if math.floor(GameRules:GetDOTATime(false, false)) > self.secondsPassed then
-			self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS and self.secondsPassed == nil then
+		Timers:CreateTimer(function()			
 			self:DoOncePerSecond()			
-		end
+			return 1
+		end)
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
 		return nil
 	end
@@ -110,6 +109,7 @@ end
 
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
+	self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
 	-- hide victory conditions, start progressbar, announce start of game
 	if (self.secondsPassed == 1) then
 		GameRules:GetGameModeEntity():SetAnnouncerDisabled(false)
@@ -242,6 +242,7 @@ function CLet4Def:DoOncePerSecond()
 				ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 			elseif newDirePlayerCount < 1 then
 				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+				self:ForceOnePlayerToDire()
 			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
 				-- change difficulty
 				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
@@ -256,8 +257,6 @@ function CLet4Def:DoOncePerSecond()
 		self.direPlayerCount = newDirePlayerCount
 		self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	end
-	-- update progress bar
-	--self.gameOverProgressbar:SetTextReplaceValue( QUEST_TEXT_REPLACE_VALUE_CURRENT_VALUE, self.timeLimit-self.secondsPassed )
 end
 
 -- Every time an npc is spawned do this:
@@ -277,20 +276,20 @@ function CLet4Def:OnNPCSpawned( event )
 				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
-				-- give dire control of units that were spawned before the dire hero
-				for _, unit in pairs(self.controlLaterList) do 
-					self:giveDireControl(unit)
-				end 
 				-- change his colour to red
 				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 0, 0)
 				-- tip for dire
-				if self.secondsPassed == 0 then
+				if self.secondsPassed == nil then
 					ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
+				end
+				-- jungle fix
+				if self.secondsPassed > 30 then
+					SendToServerConsole("sv_cheats_1;dota_spawn_neutrals;sv_cheats 0")					
 				end
 			end
 			-- make dire hero model bigger
 			spawnedUnit:SetModelScale(1.2)
-		elseif self.secondsPassed == 0 then -- tip for radiant
+		elseif self.secondsPassed == nil then -- tip for radiant
 			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
 	end
@@ -370,7 +369,7 @@ end
 function CLet4Def:OnEntityHurt( event )
 	local hurtUnit = EntIndexToHScript( event.entindex_killed )
 	if self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
-		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
+		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
 			self.lastHurtAnnouncement = self.secondsPassed
 		elseif (hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
@@ -385,12 +384,17 @@ function CLet4Def:CalculateHPCap( unit )
 end
 
 function CLet4Def:giveDireControl(unit)
-	if IsValidEntity(self.king) and IsValidEntity(unit)then
+	if IsValidEntity(self.king) and IsValidEntity(unit) then
 		unit:SetTeam(DOTA_TEAM_BADGUYS)
 		unit:SetOwner(self.king)
-		unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)		
-	elseif not IsValidEntity(self.king) then
-		table.insert(self.controlLaterList, unit)
+		unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)					
+	elseif unit:GetUnitName() == "custom_npc_dota_roshan" then
+		Timers:CreateTimer(1, function()
+			self:giveDireControl(unit)
+			return nil
+		end)
+	else
+		unit:RemoveSelf()
 	end
 end
 
@@ -441,6 +445,30 @@ end
 
 function CLet4Def:DispatchChangeTimeLimitEvent()
 	CustomGameEventManager:Send_ServerToAllClients( "time_limit_change", {timelimit = self.timeLimit})
+end
+
+function CLet4Def:ForceOnePlayerToDire()
+	for playerid = 0, DOTA_MAX_PLAYERS do
+		if PlayerResource:IsValidPlayer(playerid) then
+			player = PlayerResource:GetPlayer(playerid)
+			if player ~= nil and PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+				Timers:CreateTimer(function()
+					hero = PlayerResource:GetSelectedHeroEntity(playerid)
+					if hero == nil then
+						return 1
+					else
+						hero:AddNewModifier(hero, nil, "modifier_invulnerable", {duration = 1}) 
+						PlayerResource:SetCustomTeamAssignment(player:GetEntityIndex(), DOTA_TEAM_BADGUYS)
+						player:SetTeam(DOTA_TEAM_BADGUYS)
+						hero:SetTeam(DOTA_TEAM_BADGUYS)
+						FindClearSpaceForUnit(hero, Vector(7000,7000,0), true)
+						PlayerResource:ReplaceHeroWith(playerid, hero:GetClassname(), PlayerResource:GetGold(playerid), 0)
+						return nil
+					end
+				end)
+			end
+		end
+	end
 end
 
 function MaxAbilities( hero )
