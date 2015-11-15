@@ -51,27 +51,12 @@ function CLet4Def:InitGameMode()
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.winners = nil
 	self:DispatchChangeTimeLimitEvent()
-	-- generate tips
-	self.sizeTipsRadiant = 14
-	self.sizeTipsDire = 14
-	self.radiantTips = {}
-	for counter = 1, self.sizeTipsRadiant do
-		table.insert(self.radiantTips, "radiant_tip_"..tostring(counter))
-	end
-	self.direTips = {}
-	for counter = 1, self.sizeTipsDire do
-		table.insert(self.direTips, "dire_tip_"..tostring(counter))
-	end
-	-- victory conditions UI
-	self.victoryCondition1 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_1" } )
-	self.victoryCondition2 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_2" } )
-	self.victoryCondition3 = SpawnEntityFromTableSynchronous( "quest", { name = "", title = "quest_3" } )		
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_GOODGUYS, self.radiantPlayerCount )
 	GameRules:SetCustomGameTeamMaxPlayers( DOTA_TEAM_BADGUYS, self.direPlayerCount )
-	GameRules:SetHeroSelectionTime(15)
-	GameRules:SetPreGameTime(15)
+	GameRules:SetHeroSelectionTime(30)
+	GameRules:SetPreGameTime(30)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
 	-- listen to some game events
@@ -110,12 +95,9 @@ end
 -- Execute this once per second
 function CLet4Def:DoOncePerSecond()
 	self.secondsPassed = math.floor(GameRules:GetDOTATime(false, false))
-	-- hide victory conditions, start progressbar, announce start of game
+	-- announce start of game
 	if (self.secondsPassed == 1) then
 		GameRules:GetGameModeEntity():SetAnnouncerDisabled(false)
-		self.victoryCondition1:CompleteQuest()
-		self.victoryCondition2:CompleteQuest()
-		self.victoryCondition3:CompleteQuest()
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_21", DOTA_TEAM_GOODGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_22", DOTA_TEAM_BADGUYS)
 	end
@@ -170,7 +152,7 @@ function CLet4Def:DoOncePerSecond()
 	local allHeroes = HeroList:GetAllHeroes()
 	local xpPerSecond = (self.endgameXPTarget - self.xpSoFar) / (self.timeLimit - self.secondsPassed)
 	for _, hero in pairs( allHeroes ) do
-		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS then
+		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS and hero:IsAlive() then
 			self.modifiers:ApplyDataDrivenModifier( hero, hero, "xp_aura_modifier", {duration=-1} )
 			hero:AddExperience(xpPerSecond, false, true)
 		end
@@ -240,7 +222,7 @@ function CLet4Def:DoOncePerSecond()
 		if newTotalPlayerCount ~= self.totalPlayerCount then
 			if newTotalPlayerCount == 1 then
 				ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-			elseif newDirePlayerCount < 1 then
+			elseif newDirePlayerCount < 1 and self.secondsPassed == nil then
 				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 				self:ForceOnePlayerToDire()
 			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
@@ -278,19 +260,13 @@ function CLet4Def:OnNPCSpawned( event )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
 				-- change his colour to red
 				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 0, 0)
-				-- tip for dire
-				if self.secondsPassed == nil then
-					ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.direTips[RandomInt(1, self.sizeTipsDire)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-				end
 				-- jungle fix
-				if self.secondsPassed > 30 then
+				if self.secondsPassed ~= nil and self.secondsPassed > 30 then
 					SendToServerConsole("sv_cheats_1;dota_spawn_neutrals;sv_cheats 0")					
 				end
 			end
 			-- make dire hero model bigger
 			spawnedUnit:SetModelScale(1.2)
-		elseif self.secondsPassed == nil then -- tip for radiant
-			ShowGenericPopupToPlayer(spawnedUnit:GetOwner(),  "tip_title",  self.radiantTips[RandomInt(1, self.sizeTipsRadiant)], "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
 		end
 	end
 	-- Remove radiant creeps from the game
@@ -368,7 +344,7 @@ end
 --- Every time an NPC is dealt damage do this:
 function CLet4Def:OnEntityHurt( event )
 	local hurtUnit = EntIndexToHScript( event.entindex_killed )
-	if self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
+	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
 			self.lastHurtAnnouncement = self.secondsPassed

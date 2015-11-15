@@ -10,3 +10,5 @@ game/panorama/scripts/custom_game/statcollection.js
 game/scripts/vscripts/statcollection/
 game/panorama/layout/custom_game/statcollection.xml
 game/scripts/vscripts/libraries/
+*.jpg
+*.psd

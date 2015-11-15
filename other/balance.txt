@@ -1,0 +1,5 @@
+Radiant
+	constant respawn time 10s
+Dire 
+	reduce aura range to 1000
+

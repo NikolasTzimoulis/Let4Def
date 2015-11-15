@@ -1,0 +1,117 @@
+.GameInfo
+{
+    width:100%;
+    flow-children: down;
+}
+ 
+Label
+{
+    font-size: 18px;
+    color: #999999;
+    vertical-align: top;
+}
+ 
+#Title
+{
+    flow-children: right;
+}
+
+#TitleIcon
+{
+    width: 64px;
+    height: 64px;
+    vertical-align: center;
+}
+
+#TitleName
+{
+    color: #cccccc;
+    font-size: 64px;
+    margin-left: 16px;
+    margin-top: 16px;
+    text-transform: uppercase;
+    vertical-align: center;
+}
+
+.Header
+{
+	font-size: 18px;
+    font-weight: bold;
+	margin-top: 36px;
+	text-transform: uppercase;
+}
+
+#ObjectiveHeader
+{
+	margin-top: 18px;
+}
+
+#ObjectivesRow
+{
+	flow-children: down;
+	margin-right: 92px;
+	margin-top: 18px;
+}
+
+#RadiantTips
+{
+	width:100%;
+	flow-children: down;
+	margin-top: 100px;
+	margin-right: 10px;
+}
+
+#DireTips
+{
+	width:100%;
+	flow-children: down;
+	margin-top: 100px;
+	margin-right: 10px;
+}
+
+#TipsHeaderRadiant
+{
+	margin-top: -18px;
+}
+
+#TipsHeaderDire
+{
+	margin-top: -18px;
+}
+
+#TipsRowRadiant
+{
+	flow-children: down;
+	margin-top: 18px;	
+}
+
+#TipsRowDire
+{
+	flow-children: down;
+	margin-top: 18px;
+}
+
+#notyethints
+{
+	margin-top: 50px;
+}
+
+.ObjectiveText
+{
+	margin-left: 10px;
+    margin-top: 20px;
+	font-weight: bold;
+}
+
+.TipText
+{
+	margin-left: 10px;
+    margin-top: 20px;
+}
+
+.InfoRow
+{
+    flow-children: right;
+    width: 100%;
+}
+
