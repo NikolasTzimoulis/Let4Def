@@ -2,4 +2,6 @@ Radiant
 	constant respawn time 10s
 Dire 
 	reduce aura range to 1000
-
+	jungle spawns earlier than 0:30
+	hp cap increase updates every minute 
+	3rd item drop for rosh: item that transforms you into roshan permenantly

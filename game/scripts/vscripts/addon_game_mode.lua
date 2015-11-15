@@ -168,32 +168,21 @@ function CLet4Def:DoOncePerSecond()
 				end
 				if not unit:HasModifier("dire_weakness_modifier") and unit:GetHealth() > 0 then
 					ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_head.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+					--fix rosh when the dire hero moves away
+					if unit:GetUnitName() == "custom_npc_dota_roshan" and IsValidEntity(self.king) then
+						unit:RemoveModifierByName("modifier_stunned")
+						EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "RoshanDT.Scream", unit)					
+					end
 				end
 				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
 				self.spawnedList[unit] = true
-				--give rosh back to dire control
-				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_NEUTRALS and IsValidEntity(self.king) then
-					self:giveDireControl(unit)
-					unit:Stop()
-					GameRules:SendCustomMessage("roshan_control2", 0, 0)
-					EmitGlobalSound("RoshanDT.Scream")
-					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_30", DOTA_TEAM_BADGUYS)
-					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_32", DOTA_TEAM_GOODGUYS)
-				end
 			elseif IsValidEntity(self.king) and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance and unit:HasModifier("dire_weakness_modifier") then
 				unit:RemoveModifierByName("dire_weakness_modifier")
 				ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
-				-- turn rosh against dire if dire hero comes too close
-				if unit:GetUnitName() == "custom_npc_dota_roshan" then
-					--self.spawnedList[unit] = nil
-					unit:SetTeam(DOTA_TEAM_NEUTRALS)
-					unit:SetOwner(nil)
-					unit:SetControllableByPlayer(-1, true)	
-					unit:MoveToTargetToAttack(self.king)
-					GameRules:SendCustomMessage("roshan_control", 0, 0)
-					EmitGlobalSound("RoshanDT.Scream")
-					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_41", DOTA_TEAM_BADGUYS)
-					EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_29", DOTA_TEAM_GOODGUYS)
+				-- stun rosh if dire hero comes too close
+				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
+					unit:AddNewModifier(unit, nil, "modifier_stunned", {duration = -1}) 
+					EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "RoshanDT.Scream", unit)
 				end
 			elseif hpCap > 0.99*unit:GetMaxHealth() then
 				unit:RemoveModifierByName("dire_weakness_modifier")
@@ -343,7 +332,31 @@ end
 
 --- Every time an NPC is dealt damage do this:
 function CLet4Def:OnEntityHurt( event )
-	local hurtUnit = EntIndexToHScript( event.entindex_killed )
+	local hurtUnit = EntIndexToHScript(event.entindex_killed)
+	local attacker = EntIndexToHScript(event.entindex_attacker)
+	
+	-- rosh changes teams if dire attacks him
+	if hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and attacker:GetTeam() == DOTA_TEAM_BADGUYS then
+		EmitGlobalSound("RoshanDT.Scream")
+		hurtUnit:RemoveModifierByName("modifier_stunned")
+		hurtUnit:SetTeam(DOTA_TEAM_GOODGUYS)
+		ExecuteOrderFromTable( {UnitIndex=hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, self.king:GetAbsOrigin(), Queue = false} )
+		for playerid = 0, DOTA_MAX_PLAYERS do
+			if PlayerResource:IsValidPlayer(playerid) then
+				player = PlayerResource:GetPlayer(playerid)
+				if player ~= nil then
+					if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
+						hurtUnit:SetOwner(player)
+						hurtUnit:SetControllableByPlayer(playerid, true)	
+					end
+				end
+			end
+		end
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_41", DOTA_TEAM_BADGUYS)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_30", DOTA_TEAM_GOODGUYS)
+	end
+	
+	-- hurt announcements for dire hero and rosh
 	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
