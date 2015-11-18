@@ -1,0 +1,16 @@
+<root>
+    <styles>
+        <include src="file://{resources}/styles/custom_game/autopilot.css" />
+		<include src="file://{resources}/styles/dotastyles.css" />
+    </styles>
+    <scripts>
+        <include src="file://{resources}/scripts/custom_game/autopilot.js" />
+    </scripts>
+    <Panel class="AutopilotRoot">
+		<Panel id="AutopilotContainer">
+			<Panel id="SwitchContainer" class="SwitchContainer">
+				<ToggleButton id="autopilot_switch" checked="true" text="#autopilot" onactivate="OnAutopilotSwitched()" />
+			</Panel>
+		</Panel>
+    </Panel>
+</root>

@@ -7,6 +7,7 @@ end
 
 function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
+	PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
 	PrecacheResource("particle", "particles/items_fx/aura_hp_cap_ring.vpcf", context)
@@ -40,6 +41,7 @@ function CLet4Def:InitGameMode()
 	self.xpSoFar = 0
 	self.maxRadiantLevel = 1
 	self.spawnedList = {}
+	self.autopilotList = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
 	self.radiantPlayerCount = 4
@@ -50,6 +52,8 @@ function CLet4Def:InitGameMode()
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.winners = nil
+	self.autopilot = true
+	self.autoRosh = 0
 	self:DispatchChangeTimeLimitEvent()
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
@@ -66,6 +70,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'OnChat' ), self )
 	ListenToGameEvent( "dota_player_gained_level", Dynamic_Wrap( CLet4Def, 'OnLevelUp' ), self )
 	ListenToGameEvent( "player_reconnected", Dynamic_Wrap( CLet4Def, 'OnReconnect' ), self )
+	CustomGameEventManager:RegisterListener("autopilot_off", function(id, ...) Dynamic_Wrap(self, "DisableAutopilot")(self, ...) end)
 end
 
 -- Evaluate the state of the game
@@ -80,12 +85,29 @@ function CLet4Def:OnThink()
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 		-- punish late pickers
 		self:MonitorHeroPicks()
+		-- engage autopilot
+		if self.autoRosh == 0 and self.autopilot then
+			Timers:CreateTimer(function()
+				self:AutopilotGather()
+				if self.autopilot then
+					return 30
+				end
+			end)
+		end
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS and self.secondsPassed == nil then
 		Timers:CreateTimer(function()			
 			self:DoOncePerSecond()			
 			return 1
 		end)
+		if self.autopilot then
+			Timers:CreateTimer(AutoPilotAttackWait(), function()			
+				self:AutoPilotAttack()	
+				if self.autopilot then
+					return AutoPilotAttackWait()
+				end
+			end)
+		end
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
 		return nil
 	end
@@ -171,7 +193,7 @@ function CLet4Def:DoOncePerSecond()
 					--fix rosh when the dire hero moves away
 					if unit:GetUnitName() == "custom_npc_dota_roshan" and IsValidEntity(self.king) then
 						unit:RemoveModifierByName("modifier_stunned")
-						EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "RoshanDT.Scream", unit)					
+						EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "Roshan.Grunt", unit)					
 					end
 				end
 				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
@@ -191,8 +213,9 @@ function CLet4Def:DoOncePerSecond()
 			self.spawnedList[unit] = nil
 		end
 	end
-	-- re-check number of players every minute
+	--every minute
 	if (self.secondsPassed % 60 == 1) then
+		-- re-check number of players 
 		local newRadiantPlayerCount = 0
 		local newDirePlayerCount = 0
 		for playerid = 0, DOTA_MAX_PLAYERS do
@@ -312,6 +335,7 @@ function CLet4Def:OnEntityKilled( event )
 		self.towerExtraBounty = self.towerExtraBounty + self.towerExtraBountyIncrease
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_20", DOTA_TEAM_BADGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_26", DOTA_TEAM_GOODGUYS)
+		EmitSoundOnLocationForAllies(killedUnit:GetOrigin(), "General.CoinsBig", self.king )
 	end
 	-- if rosh is killed, make him drop his items
 	if killedUnit:GetUnitName() == "custom_npc_dota_roshan" then
@@ -337,10 +361,11 @@ function CLet4Def:OnEntityHurt( event )
 	
 	-- rosh changes teams if dire attacks him
 	if hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and attacker:GetTeam() == DOTA_TEAM_BADGUYS then
-		EmitGlobalSound("RoshanDT.Scream")
+		EmitGlobalSound("RoshanDT.Gobble")
 		hurtUnit:RemoveModifierByName("modifier_stunned")
+		self.spawnedList[hurtUnit] = nil
 		hurtUnit:SetTeam(DOTA_TEAM_GOODGUYS)
-		ExecuteOrderFromTable( {UnitIndex=hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, self.king:GetAbsOrigin(), Queue = false} )
+		ExecuteOrderFromTable( {UnitIndex=hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position=self.king:GetAbsOrigin(), Queue = false} )
 		for playerid = 0, DOTA_MAX_PLAYERS do
 			if PlayerResource:IsValidPlayer(playerid) then
 				player = PlayerResource:GetPlayer(playerid)
@@ -458,6 +483,49 @@ function CLet4Def:ForceOnePlayerToDire()
 			end
 		end
 	end
+end
+
+function CLet4Def:DisableAutopilot(event)
+	self.autopilot = false
+	EmitAnnouncerSoundForTeam("General.Acknowledge", DOTA_TEAM_BADGUYS)	
+end
+
+function CLet4Def:AutopilotGather()
+	local gatherLocation = Vector(RandomInt(0, 6000),RandomInt(0, 6000),0)
+	for unit, i in pairs(self.spawnedList) do
+		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
+			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and self.autopilotList[unit] == nil then
+				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = gatherLocation, Queue = false} )
+			elseif unit:GetUnitName() == "custom_npc_dota_roshan" and self.autoRosh == 0 then
+				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = Vector(7000,6400,0), Queue = false} )
+				self.autoRosh = 1
+			end
+		end
+	end
+end
+
+function CLet4Def:AutoPilotAttack()		
+	local  pivotID = RandomInt(1,3)
+	local pivotLocation = Vector(0,0,0)
+	if pivotID == 2 then
+		pivotLocation = Vector(-4500,6000, 0)
+	elseif pivotID == 3 then
+		pivotLocation = Vector(4900, -6300, 0)
+	end
+	for unit, i in pairs(self.spawnedList) do
+		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
+			if unit:GetUnitName() ~= "custom_npc_dota_roshan" or self.secondsPassed > 10*60 then
+				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
+				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-6000,-5500,0), Queue = true} )
+				self.autopilotList[unit] = true
+			end
+		end
+	end
+end
+
+function AutoPilotAttackWait()
+	local wait = RandomInt(90, 180)
+	return wait
 end
 
 function MaxAbilities( hero )

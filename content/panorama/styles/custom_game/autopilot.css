@@ -1,0 +1,23 @@
+.AutopilotRoot
+{
+	horizontal-align: right;
+	margin-top: 50px;
+    margin-right: 0px;	
+	z-index: 1;
+}
+
+#AutopilotContainer
+{
+	visibility: collapse;
+	flow-children: down;
+	background-color: gradient( linear, 100% 0%, 100% 100%, from( #111111 ), color-stop( 0.01, #202327 ), color-stop( 0.2, #141619ff ), to( #000000dd ) );
+}
+
+.SwitchContainer
+{
+    width: 100px;
+	height: 30px;
+	margin-left: 10px;
+	margin-right: 10px;
+	margin-top: 5px;
+}
