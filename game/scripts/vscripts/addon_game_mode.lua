@@ -34,6 +34,7 @@ function CLet4Def:InitGameMode()
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
+	self.autoGatherInterval = 30
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -41,7 +42,6 @@ function CLet4Def:InitGameMode()
 	self.xpSoFar = 0
 	self.maxRadiantLevel = 1
 	self.spawnedList = {}
-	self.autopilotList = {}
 	self.king = nil
 	self.checkHeroesPicked = false	
 	self.radiantPlayerCount = 4
@@ -90,7 +90,7 @@ function CLet4Def:OnThink()
 			Timers:CreateTimer(function()
 				self:AutopilotGather()
 				if self.autopilot then
-					return 30
+					return self.autoGatherInterval
 				end
 			end)
 		end
@@ -494,7 +494,7 @@ function CLet4Def:AutopilotGather()
 	local gatherLocation = Vector(RandomInt(0, 6000),RandomInt(0, 6000),0)
 	for unit, i in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
-			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and self.autopilotList[unit] == nil then
+			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and GameRules:GetGameTime()-unit:GetCreationTime() <= self.autoGatherInterval then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = gatherLocation, Queue = false} )
 			elseif unit:GetUnitName() == "custom_npc_dota_roshan" and self.autoRosh == 0 then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = Vector(7000,6400,0), Queue = false} )
@@ -510,14 +510,13 @@ function CLet4Def:AutoPilotAttack()
 	if pivotID == 2 then
 		pivotLocation = Vector(-4500,6000, 0)
 	elseif pivotID == 3 then
-		pivotLocation = Vector(4900, -6300, 0)
+		pivotLocation = Vector(5800, -5400, 0)
 	end
 	for unit, i in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
 			if unit:GetUnitName() ~= "custom_npc_dota_roshan" or self.secondsPassed > 10*60 then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-6000,-5500,0), Queue = true} )
-				self.autopilotList[unit] = true
 			end
 		end
 	end
