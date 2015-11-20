@@ -34,6 +34,7 @@
 				<Label id="RadiantTipText12" class="TipText" html="true" text="#radiant_tip_12" />
 				<Label id="RadiantTipText13" class="TipText" html="true" text="#radiant_tip_13" />
 				<Label id="RadiantTipText14" class="TipText" html="true" text="#radiant_tip_14" />
+				<Label id="RadiantTipText15" class="TipText" html="true" text="#radiant_tip_15" />
 			</Panel>
 		</Panel>
 		<Panel id="DireTips">
@@ -53,6 +54,7 @@
 				<Label id="DireTipText12" class="TipText" html="true" text="#dire_tip_12" />
 				<Label id="DireTipText13" class="TipText" html="true" text="#dire_tip_13" />
 				<Label id="DireTipText14" class="TipText" html="true" text="#dire_tip_14" />
+				<Label id="DireTipText15" class="TipText" html="true" text="#dire_tip_15" />
 			</Panel>
 		</Panel>
 	</Panel>

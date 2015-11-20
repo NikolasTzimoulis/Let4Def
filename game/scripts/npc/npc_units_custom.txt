@@ -112,7 +112,7 @@
 		"Ability3"					"roshan_slam"			// Ability 3.
 		"Ability4"					"roshan_inherent_buffs"	// Ability 4.
 		"Ability5"					"roshan_devotion"		// Ability 5.
-		"Ability6"					""						// Ability 6 - Extra.
+		"Ability6"					"always_deniable"		// Ability 6 - Extra.
 		"Ability7"					""						// Ability 7 - Extra.
 		"Ability8"					""						// Ability 8 - Extra.
 

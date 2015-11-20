@@ -13,6 +13,9 @@ function Precache( context )
 	PrecacheResource("particle", "particles/items_fx/aura_hp_cap_ring.vpcf", context)
 	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", context)
 	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_head.vpcf", context)
+	PrecacheResource("particle", "particles/neutral_fx/roshan_spawn.vpcf", context)
+	PrecacheResource("particle", "particles/econ/courier/courier_roshan_lava/courier_roshan_lava.vpcf", context)
+	PrecacheResource("particle", "particles/hw_fx/hw_roshan_death.vpcf", context)
 end
 
 -- Create the game mode when we activate
@@ -28,7 +31,7 @@ function CLet4Def:InitGameMode()
 	self.towerExtraBountyIncrease = 200
 	self.endgameXPTarget = 14400 -- how much XP each radiant hero must have by the end of the game
 	self.timeLimitBase = 20*60 -- 20 minutes game length
-	self.weaknessDistance = 1500 -- how close to the king a unit must be to not suffer from weakness
+	self.weaknessDistance = 1000 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
@@ -54,6 +57,9 @@ function CLet4Def:InitGameMode()
 	self.winners = nil
 	self.autopilot = true
 	self.autoRosh = 0
+	self.aegisCarrier = nil
+	self.aegisPickupTime = GameRules:GetGameTime()
+	self.aegisExpirationDelay = 5*60
 	self:DispatchChangeTimeLimitEvent()
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )
@@ -70,6 +76,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'OnChat' ), self )
 	ListenToGameEvent( "dota_player_gained_level", Dynamic_Wrap( CLet4Def, 'OnLevelUp' ), self )
 	ListenToGameEvent( "player_reconnected", Dynamic_Wrap( CLet4Def, 'OnReconnect' ), self )
+	ListenToGameEvent( "dota_item_picked_up", Dynamic_Wrap( CLet4Def, 'OnItemPickedUp' ), self )
 	CustomGameEventManager:RegisterListener("autopilot_off", function(id, ...) Dynamic_Wrap(self, "DisableAutopilot")(self, ...) end)
 end
 
@@ -127,24 +134,8 @@ function CLet4Def:DoOncePerSecond()
 	local timeRemaining = (math.ceil(self.timeLimit) - self.secondsPassed)
 	if timeRemaining == 0 then
 		GameRules:SendCustomMessage("time_up", 0, 0)
-	elseif timeRemaining == 1 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_01")
-	elseif timeRemaining == 2 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_02")
-	elseif timeRemaining == 3 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_03")
-	elseif timeRemaining == 4 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_04")
-	elseif timeRemaining == 5 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_05")
-	elseif timeRemaining == 6 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_06")
-	elseif timeRemaining == 7 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_07")
-	elseif timeRemaining == 8 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_08")
-	elseif timeRemaining == 9 then
-		EmitAnnouncerSound("announcer_ann_custom_countdown_09")
+	elseif timeRemaining >= 1 and timeRemaining <= 9 then
+		EmitAnnouncerSound("announcer_ann_custom_countdown_0"..tostring(timeRemaining))
 	elseif timeRemaining == 10 then
 		EmitAnnouncerSound("announcer_ann_custom_countdown_10")
 	elseif timeRemaining == 30 then
@@ -190,22 +181,12 @@ function CLet4Def:DoOncePerSecond()
 				end
 				if not unit:HasModifier("dire_weakness_modifier") and unit:GetHealth() > 0 then
 					ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_head.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
-					--fix rosh when the dire hero moves away
-					if unit:GetUnitName() == "custom_npc_dota_roshan" and IsValidEntity(self.king) then
-						unit:RemoveModifierByName("modifier_stunned")
-						EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "Roshan.Grunt", unit)					
-					end
 				end
 				self.modifiers:ApplyDataDrivenModifier( unit, unit, "dire_weakness_modifier", {duration=-1} )
 				self.spawnedList[unit] = true
 			elseif IsValidEntity(self.king) and CalcDistanceBetweenEntityOBB(self.king, unit) <= self.weaknessDistance and unit:HasModifier("dire_weakness_modifier") then
 				unit:RemoveModifierByName("dire_weakness_modifier")
 				ParticleManager:CreateParticle("particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
-				-- stun rosh if dire hero comes too close
-				if unit:GetUnitName() == "custom_npc_dota_roshan" and unit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
-					unit:AddNewModifier(unit, nil, "modifier_stunned", {duration = -1}) 
-					EmitSoundOnLocationForAllies(unit:GetAbsOrigin(), "RoshanDT.Scream", unit)
-				end
 			elseif hpCap > 0.99*unit:GetMaxHealth() then
 				unit:RemoveModifierByName("dire_weakness_modifier")
 			end
@@ -266,7 +247,6 @@ function CLet4Def:OnNPCSpawned( event )
 					MaxAbilities(spawnedUnit)
 					return nil
 				end)
-				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", DOTA_TEAM_BADGUYS)
 				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
@@ -278,7 +258,7 @@ function CLet4Def:OnNPCSpawned( event )
 				end
 			end
 			-- make dire hero model bigger
-			spawnedUnit:SetModelScale(1.2)
+			IncrementalModelScale(spawnedUnit, 0.2)
 		end
 	end
 	-- Remove radiant creeps from the game
@@ -319,13 +299,27 @@ function CLet4Def:OnEntityKilled( event )
 	local killedTeam = killedUnit:GetTeam()
 	local attackerTeam = EntIndexToHScript( event.entindex_attacker ):GetTeam()
 	-- if a hero is killed...
-	if (killedUnit:IsRealHero() and not killedUnit:IsReincarnating() and not killedUnit:IsClone()) then
-		-- if their hero is killed, game over for dire
-		if killedTeam == DOTA_TEAM_BADGUYS then
-			self.winners = DOTA_TEAM_GOODGUYS
-		-- if radiant hero is killed, give them a short respawn time
-		elseif killedTeam == DOTA_TEAM_GOODGUYS then 
-			killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
+	if (killedUnit:IsRealHero()and not killedUnit:IsClone()) then	
+		if not killedUnit:IsReincarnating() then
+			-- if their hero is killed, game over for dire
+			if killedTeam == DOTA_TEAM_BADGUYS then
+				self.winners = DOTA_TEAM_GOODGUYS
+			-- if radiant hero is killed, give them a short respawn time
+			elseif killedTeam == DOTA_TEAM_GOODGUYS then 
+				killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
+			end
+		else
+			-- give dire hero his modifiers back
+			if killedTeam == DOTA_TEAM_BADGUYS then
+				Timers:CreateTimer(5.1, function()
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
+				end)
+			end
+			-- apply special buffs if this is an aegis reincarnation
+			if self.aegisCarrier == killedUnit and GameRules:GetGameTime() <= self.aegisPickupTime + self.aegisExpirationDelay and not killedUnit:HasItemInInventory("item_aegis") then
+				self:ApplyAegisExtraBuffs(killedUnit, 5.1)
+			end
 		end
 	end 
 	-- if radiant tower is killed, give extra gold to dire
@@ -357,11 +351,14 @@ end
 --- Every time an NPC is dealt damage do this:
 function CLet4Def:OnEntityHurt( event )
 	local hurtUnit = EntIndexToHScript(event.entindex_killed)
-	local attacker = EntIndexToHScript(event.entindex_attacker)
+	local attacker = nil 
+	if event.entindex_attacker ~= nil then
+		attacker = EntIndexToHScript(event.entindex_attacker)
+	end
 	
 	-- rosh changes teams if dire attacks him
-	if hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and attacker:GetTeam() == DOTA_TEAM_BADGUYS then
-		EmitGlobalSound("RoshanDT.Gobble")
+	if hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and attacker~= nil and attacker:GetTeam() == DOTA_TEAM_BADGUYS then
+		EmitGlobalSound("RoshanDT.Scream")
 		hurtUnit:RemoveModifierByName("modifier_stunned")
 		self.spawnedList[hurtUnit] = nil
 		hurtUnit:SetTeam(DOTA_TEAM_GOODGUYS)
@@ -402,7 +399,7 @@ function CLet4Def:giveDireControl(unit)
 		unit:SetTeam(DOTA_TEAM_BADGUYS)
 		unit:SetOwner(self.king)
 		unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)					
-	elseif unit:GetUnitName() == "custom_npc_dota_roshan" then
+	elseif IsValidEntity(unit) and unit:GetUnitName() == "custom_npc_dota_roshan" then
 		Timers:CreateTimer(1, function()
 			self:giveDireControl(unit)
 			return nil
@@ -485,6 +482,36 @@ function CLet4Def:ForceOnePlayerToDire()
 	end
 end
 
+function CLet4Def:ApplyAegisExtraBuffs( unit, delay )	
+	Timers:CreateTimer(delay, function()
+		abil = unit:AddAbility("roshan_spell_block")
+		abil:SetLevel(abil:GetMaxLevel())
+		abil:SetHidden(true)
+				abil = unit:AddAbility("roshan_devotion")
+		abil:SetLevel(abil:GetMaxLevel())
+		abil:SetHidden(true)
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", unit:GetTeamNumber())
+		ParticleManager:CreateParticle("particles/neutral_fx/roshan_spawn.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+		buffEffect = ParticleManager:CreateParticle("particles/econ/courier/courier_roshan_lava/courier_roshan_lava.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+		IncrementalModelScale(unit, 0.2)
+		--Timers:CreateTimer(self.aegisExtraBuffsDuration, function() ParticleManager:DestroyParticle(buffEffect, true) end)
+	end)
+	EmitGlobalSound("RoshanDT.Scream")
+	ParticleManager:CreateParticle("particles/hw_fx/hw_roshan_death.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+end
+
+function CLet4Def:OnItemPickedUp(event)
+	if event.itemname == "item_aegis" then
+		self.aegisCarrier = EntIndexToHScript(event.HeroEntityIndex)
+		self.aegisPickupTime = GameRules:GetGameTime()
+		Timers:CreateTimer(self.aegisExpirationDelay, function()
+			if self.aegisCarrier:HasModifier("modifier_aegis_regen") then
+				self:ApplyAegisExtraBuffs(self.aegisCarrier, 0)
+			end
+		end)
+	end
+end
+
 function CLet4Def:DisableAutopilot(event)
 	self.autopilot = false
 	EmitAnnouncerSoundForTeam("General.Acknowledge", DOTA_TEAM_BADGUYS)	
@@ -497,8 +524,14 @@ function CLet4Def:AutopilotGather()
 			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and GameRules:GetGameTime()-unit:GetCreationTime() <= self.autoGatherInterval then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = gatherLocation, Queue = false} )
 			elseif unit:GetUnitName() == "custom_npc_dota_roshan" and self.autoRosh == 0 then
-				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = Vector(7000,6400,0), Queue = false} )
 				self.autoRosh = 1
+				Timers:CreateTimer(function()
+					if IsValidEntity(self.king) then
+						ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = Vector(7000,6400,0), Queue = false} )
+					else 
+						return 1
+					end
+				end)
 			end
 		end
 	end
@@ -516,14 +549,14 @@ function CLet4Def:AutoPilotAttack()
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
 			if unit:GetUnitName() ~= "custom_npc_dota_roshan" or self.secondsPassed > 10*60 then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
-				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-6000,-5500,0), Queue = true} )
+				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-5700,-5200,0), Queue = true} )
 			end
 		end
 	end
 end
 
 function AutoPilotAttackWait()
-	local wait = RandomInt(90, 180)
+	local wait = RandomInt(120, 240)
 	return wait
 end
 
@@ -542,6 +575,14 @@ function MaxAbilities( hero )
 			end
 		end
     end
+end
+
+function IncrementalModelScale(unit, scaleDif)
+	for i = 1,10 do
+		Timers:CreateTimer(i/10, function()
+			unit:SetModelScale(unit:GetModelScale()+scaleDif/10)
+		end)
+	end
 end
 
 function math.sign(x)
