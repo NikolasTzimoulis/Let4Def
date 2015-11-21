@@ -59,7 +59,7 @@ function CLet4Def:InitGameMode()
 	self.autoRosh = 0
 	self.aegisCarrier = nil
 	self.aegisPickupTime = GameRules:GetGameTime()
-	self.aegisExpirationDelay = 5*60
+	self.aegisExpirationDelay = 5*60+0.1
 	self:DispatchChangeTimeLimitEvent()
 	-- base rules
 	GameRules:GetGameModeEntity():SetThink( "OnThink", self, "GlobalThink", 2 )

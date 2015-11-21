@@ -1,12 +1,6 @@
 Radiant
 	constant respawn time 10s
 Dire
-	+roshan's powers are bestowed to the dire player while roshan is in his aura
-	+when the dire hero stands to roshan long enough, roshan will go into his inventory. When summoned from the inventory he is unaffected by the dire hero aura stun for a few seconds. Alternatively, summoning rosh from the inventory has a global range.
 	+roshan respawns (as soon as the aegis expires or is used)
-	+roshan's powers are bestowed to he who slays him for a limited amount of time / holds the aegis / is revived or healed by the aegis
-	-reduce aura range to 1000
-	+jungle spawns earlier than 0:30
 	-hp cap increase updates every minute 
-	+3rd item drop for rosh: item that transforms you into roshan permenantly
-	+dire hero aura causes rosh to be phased. if the dire hero goes to close to the wormhole, he switches places with rosh / transforms into rosh / combines
+	-change hp cap function
