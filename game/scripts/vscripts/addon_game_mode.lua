@@ -33,10 +33,10 @@ function CLet4Def:InitGameMode()
 	self.timeLimitBase = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 1000 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
-	self.creepBountyMultiplier = 1.5 -- how much extra gold should dire creeps give
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
+	self.extraMaxBountyPerSecond = 10/60 -- how much the dire creep max bounty gets increased the longer they stay alive
 	self.autoGatherInterval = 30
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
@@ -95,8 +95,8 @@ function CLet4Def:OnThink()
 		-- engage autopilot
 		if self.autoRosh == 0 and self.autopilot then
 			Timers:CreateTimer(function()
-				self:AutopilotGather()
 				if self.autopilot then
+					self:AutopilotGather()
 					return self.autoGatherInterval
 				end
 			end)
@@ -109,8 +109,8 @@ function CLet4Def:OnThink()
 		end)
 		if self.autopilot then
 			Timers:CreateTimer(AutoPilotAttackWait(), function()			
-				self:AutoPilotAttack()	
 				if self.autopilot then
+					self:AutoPilotAttack()	
 					return AutoPilotAttackWait()
 				end
 			end)
@@ -175,6 +175,7 @@ function CLet4Def:DoOncePerSecond()
 	for unit, i in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
 			local hpCap = self:CalculateHPCap(unit)
+			unit:SetMaximumGoldBounty(unit:GetMinimumGoldBounty()+self.extraMaxBountyPerSecond*(GameRules:GetGameTime()-unit:GetCreationTime()))	
 			if not self.spawnedList[unit] or not IsValidEntity(self.king) or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
 				if unit:GetHealth() > hpCap then
 					unit:SetHealth(hpCap)
@@ -275,10 +276,7 @@ function CLet4Def:OnNPCSpawned( event )
 	spawnedUnit:SetDeathXP(0)	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
-		self.spawnedList[spawnedUnit] = false
-		-- Increase gold bounty of dire units
-		spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)
-		spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.creepBountyMultiplier)		
+		self.spawnedList[spawnedUnit] = false	
 		-- Give full control of neutral units to dire
 		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
 			self:giveDireControl(spawnedUnit)	

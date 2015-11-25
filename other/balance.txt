@@ -1,6 +1,7 @@
 Radiant
 	constant respawn time 10s
 	- less passive xp, change passive xp function
+	- creep gold based on alive time
 Dire
 	+control over lane creeps
 	+minimap events for under attack
