@@ -265,6 +265,12 @@ function CLet4Def:OnNPCSpawned( event )
 	if (spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_melee" or spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_ranged" or spawnedUnit:GetUnitName() == "npc_dota_goodguys_siege") then
 		spawnedUnit:RemoveSelf()
 	end	
+	-- Remake dire lane creeps
+	if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS and (string.find(spawnedUnit:GetUnitName(), "creep") or string.find(spawnedUnit:GetUnitName(), "siege")) then
+		local creep = CreateUnitByName(spawnedUnit:GetUnitName(), spawnedUnit:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_NEUTRALS)
+		FindClearSpaceForUnit(creep, spawnedUnit:GetAbsOrigin(), true)
+		spawnedUnit:RemoveSelf()
+	end
 	-- Remove XP bounties from the game
 	spawnedUnit:SetDeathXP(0)	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
@@ -556,7 +562,7 @@ function CLet4Def:AutoPilotAttack()
 end
 
 function AutoPilotAttackWait()
-	local wait = RandomInt(120, 240)
+	local wait = RandomInt(90, 180)
 	return wait
 end
 
