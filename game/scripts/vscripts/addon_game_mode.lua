@@ -34,7 +34,6 @@ function CLet4Def:InitGameMode()
 	self.weaknessDistance = 1000 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
-	self.roshVulnerableTime = 1 -- how many seconds after the start of the game should roshan stop being invulnerable
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.extraMaxBountyPerSecond = 10/60 -- how much the dire creep max bounty gets increased the longer they stay alive
 	self.autoGatherInterval = 30
@@ -266,34 +265,33 @@ function CLet4Def:OnNPCSpawned( event )
 	if (spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_melee" or spawnedUnit:GetUnitName() == "npc_dota_creep_goodguys_ranged" or spawnedUnit:GetUnitName() == "npc_dota_goodguys_siege") then
 		spawnedUnit:RemoveSelf()
 	end	
-	-- Remake dire lane creeps
-	if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS and (string.find(spawnedUnit:GetUnitName(), "creep") or string.find(spawnedUnit:GetUnitName(), "siege")) then
+	-- Remake dire lane creeps	
+	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_NEUTRALS and string.find(spawnedUnit:GetUnitName(), "badguys") and (string.find(spawnedUnit:GetUnitName(), "creep") or string.find(spawnedUnit:GetUnitName(), "siege")) then
 		local creep = CreateUnitByName(spawnedUnit:GetUnitName(), spawnedUnit:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_NEUTRALS)
 		FindClearSpaceForUnit(creep, spawnedUnit:GetAbsOrigin(), true)
 		spawnedUnit:RemoveSelf()
-	end
+	end	
 	-- Remove XP bounties from the game
 	spawnedUnit:SetDeathXP(0)	
-	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() and string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
+	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
-		self.spawnedList[spawnedUnit] = false	
+		if string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
+			self.spawnedList[spawnedUnit] = false	
+		end
 		-- Give full control of neutral units to dire
 		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
 			self:giveDireControl(spawnedUnit)	
 		end		
 	end
-	
 	-- remake roshan
 	if spawnedUnit:GetUnitName() == "npc_dota_roshan"  then
 		CreateUnitByName("custom_npc_dota_roshan", spawnedUnit:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_NEUTRALS)
 		spawnedUnit:RemoveSelf()
 	end
-	-- give roshan aegis and cheese and make him invulnerable for a while
+	-- give roshan aegis and cheese
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
 		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
-		invulDuration = max(1,-GameRules:GetDOTATime(false, true) + self.roshVulnerableTime)
-		spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_invulnerable", {duration = invulDuration}) 
 	end
 end
 
@@ -386,10 +384,12 @@ function CLet4Def:OnEntityHurt( event )
 	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
+			MinimapEvent(DOTA_TEAM_BADGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
 			self.lastHurtAnnouncement = self.secondsPassed
 		elseif (hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_02", DOTA_TEAM_BADGUYS)
 			self.lastHurtAnnouncement = self.secondsPassed
+			MinimapEvent(DOTA_TEAM_BADGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,   DOTA_MINIMAP_EVENT_HINT_LOCATION , self.announcementFrequency)
 		end
 	end
 end
