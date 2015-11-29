@@ -258,7 +258,7 @@ function CLet4Def:OnNPCSpawned( event )
 				end
 			end
 			-- make dire hero model bigger
-			IncrementalModelScale(spawnedUnit, 0.2)
+			IncrementalModelScale(spawnedUnit, 0.2, 1)
 		end
 	end
 	-- Remove radiant creeps from the game
@@ -309,6 +309,10 @@ function CLet4Def:OnEntityKilled( event )
 			-- if radiant hero is killed, give them a short respawn time
 			elseif killedTeam == DOTA_TEAM_GOODGUYS then 
 				killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
+			end
+			-- remove aegis buffs after hero death
+			if killedUnit:HasAbility("roshan_spell_block") then
+				self:RemoveAegisExtraBuffs(killedUnit)
 			end
 		else
 			-- give dire hero his modifiers back
@@ -378,6 +382,7 @@ function CLet4Def:OnEntityHurt( event )
 		end
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_41", DOTA_TEAM_BADGUYS)
 		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_30", DOTA_TEAM_GOODGUYS)
+		MinimapEvent(DOTA_TEAM_GOODGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,   DOTA_MINIMAP_EVENT_HINT_LOCATION , self.announcementFrequency)
 	end
 	
 	-- hurt announcements for dire hero and rosh
@@ -491,17 +496,24 @@ function CLet4Def:ApplyAegisExtraBuffs( unit, delay )
 		abil = unit:AddAbility("roshan_spell_block")
 		abil:SetLevel(abil:GetMaxLevel())
 		abil:SetHidden(true)
-				abil = unit:AddAbility("roshan_devotion")
+		abil = unit:AddAbility("roshan_devotion")
 		abil:SetLevel(abil:GetMaxLevel())
 		abil:SetHidden(true)
-		EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_06", unit:GetTeamNumber())
+		EmitAnnouncerSoundForPlayer("announcer_ann_custom_adventure_alerts_06", unit:GetOwner():GetPlayerID())
 		ParticleManager:CreateParticle("particles/neutral_fx/roshan_spawn.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
-		buffEffect = ParticleManager:CreateParticle("particles/econ/courier/courier_roshan_lava/courier_roshan_lava.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
-		IncrementalModelScale(unit, 0.2)
+		self.buffEffect = ParticleManager:CreateParticle("particles/econ/courier/courier_roshan_lava/courier_roshan_lava.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+		IncrementalModelScale(unit, 0.2, 3)
 		--Timers:CreateTimer(self.aegisExtraBuffsDuration, function() ParticleManager:DestroyParticle(buffEffect, true) end)
 	end)
 	EmitGlobalSound("RoshanDT.Scream")
 	ParticleManager:CreateParticle("particles/hw_fx/hw_roshan_death.vpcf", PATTACH_ABSORIGIN_FOLLOW, unit)
+end
+
+function CLet4Def:RemoveAegisExtraBuffs( unit )	
+	unit:RemoveAbility("roshan_spell_block")
+	unit:RemoveAbility("roshan_devotion")
+	IncrementalModelScale(unit, -0.2, 1)
+	ParticleManager:DestroyParticle(self.buffEffect, true)
 end
 
 function CLet4Def:OnItemPickedUp(event)
@@ -581,10 +593,10 @@ function MaxAbilities( hero )
     end
 end
 
-function IncrementalModelScale(unit, scaleDif)
-	for i = 1,10 do
+function IncrementalModelScale(unit, scaleDif, duration)
+	for i = 1,10*duration do
 		Timers:CreateTimer(i/10, function()
-			unit:SetModelScale(unit:GetModelScale()+scaleDif/10)
+			unit:SetModelScale(unit:GetModelScale()+scaleDif/10/duration)			
 		end)
 	end
 end

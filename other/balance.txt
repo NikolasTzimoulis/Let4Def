@@ -1,10 +1,8 @@
 Radiant
 	constant respawn time 10s
 	- less passive xp, change passive xp function
-	- creep gold based on alive time
 Dire
-	+control over lane creeps
-	+minimap events for under attack
 	+roshan respawns (as soon as the aegis expires or is used)
 	-hp cap increase updates every minute all at once
 	-change hp cap function
+	-supercreeps affected by hp cap
