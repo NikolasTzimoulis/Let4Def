@@ -35,7 +35,6 @@ function CLet4Def:InitGameMode()
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
-	self.extraMaxBountyPerSecond = 10/60 -- how much the dire creep max bounty gets increased the longer they stay alive
 	self.autoGatherInterval = 30
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
@@ -76,6 +75,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "dota_player_gained_level", Dynamic_Wrap( CLet4Def, 'OnLevelUp' ), self )
 	ListenToGameEvent( "player_reconnected", Dynamic_Wrap( CLet4Def, 'OnReconnect' ), self )
 	ListenToGameEvent( "dota_item_picked_up", Dynamic_Wrap( CLet4Def, 'OnItemPickedUp' ), self )
+	--ListenToGameEvent( "dota_item_picked_up", PrintEventData, nil)
 	CustomGameEventManager:RegisterListener("autopilot_off", function(id, ...) Dynamic_Wrap(self, "DisableAutopilot")(self, ...) end)
 end
 
@@ -174,7 +174,7 @@ function CLet4Def:DoOncePerSecond()
 	for unit, i in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
 			local hpCap = self:CalculateHPCap(unit)
-			unit:SetMaximumGoldBounty(unit:GetMinimumGoldBounty()+self.extraMaxBountyPerSecond*(GameRules:GetGameTime()-unit:GetCreationTime()))	
+			unit:SetMaximumGoldBounty(self:CalculateMaxBounty(unit))	
 			if not self.spawnedList[unit] or not IsValidEntity(self.king) or CalcDistanceBetweenEntityOBB(self.king, unit) > self.weaknessDistance then
 				if unit:GetHealth() > hpCap then
 					unit:SetHealth(hpCap)
@@ -365,7 +365,6 @@ function CLet4Def:OnEntityHurt( event )
 	-- rosh changes teams if dire attacks him
 	if hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and attacker~= nil and attacker:GetTeam() == DOTA_TEAM_BADGUYS then
 		EmitGlobalSound("RoshanDT.Scream")
-		hurtUnit:RemoveModifierByName("modifier_stunned")
 		self.spawnedList[hurtUnit] = nil
 		hurtUnit:SetTeam(DOTA_TEAM_GOODGUYS)
 		ExecuteOrderFromTable( {UnitIndex=hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position=self.king:GetAbsOrigin(), Queue = false} )
@@ -401,6 +400,11 @@ end
 
 function CLet4Def:CalculateHPCap( unit )
 	return math.max(1, 0.01*unit:GetMaxHealth() ,self.hPCapIncreaseRate*self.secondsPassed*unit:GetMaxHealth())
+end
+
+function CLet4Def:CalculateMaxBounty( unit )
+	local minutes = (GameRules:GetGameTime()-unit:GetCreationTime())/60
+	return unit:GetMinimumGoldBounty() * (1 + (math.pow(minutes,3)/100))
 end
 
 function CLet4Def:giveDireControl(unit)
@@ -614,4 +618,10 @@ end
 function math.round(num, idp)
   local mult = 10^(idp or 0)
   return math.floor(num * mult + 0.5) / mult
+end
+
+function PrintEventData(event)
+	for k, v in pairs( event ) do
+        print(k .. " " .. tostring(v).." ("..type(v)..")" )
+    end
 end

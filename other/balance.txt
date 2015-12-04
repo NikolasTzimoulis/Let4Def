@@ -1,8 +1,10 @@
 Radiant
 	constant respawn time 10s
+	- 2*level respawn time
 	- less passive xp, change passive xp function
+	- less gold from creeps
 Dire
-	+roshan respawns (as soon as the aegis expires or is used)
+	+can zoom out more
 	-hp cap increase updates every minute all at once
 	-change hp cap function
 	-supercreeps affected by hp cap
