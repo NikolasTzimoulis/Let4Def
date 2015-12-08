@@ -33,7 +33,7 @@ function CLet4Def:InitGameMode()
 	self.timeLimitBase = 20*60 -- 20 minutes game length
 	self.weaknessDistance = 1000 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
-	self.radiantRespawnMultiplier = 1 -- multiplied with the hero's level to get the respawn timer for radiant
+	self.radiantRespawnMultiplier = 2 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.autoGatherInterval = 30
 	-- initialise stuff
@@ -306,9 +306,10 @@ function CLet4Def:OnEntityKilled( event )
 			-- if their hero is killed, game over for dire
 			if killedTeam == DOTA_TEAM_BADGUYS then
 				self.winners = DOTA_TEAM_GOODGUYS
-			-- if radiant hero is killed, give them a short respawn time
+			-- if radiant hero is killed, give them a short respawn time and no buyback cooldown
 			elseif killedTeam == DOTA_TEAM_GOODGUYS then 
 				killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
+				killedUnit:SetBuybackCooldownTime(0)
 			end
 			-- remove aegis buffs after hero death
 			if killedUnit:HasAbility("roshan_spell_block") then
