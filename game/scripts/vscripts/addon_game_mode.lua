@@ -87,6 +87,9 @@ function CLet4Def:OnThink()
 		ancient = Entities:FindByName( nil, "dota_badguys_fort" )
 		ancient:ForceKill(false)
 		GameRules:SetGameWinner(self.winners)
+		if self.winners == DOTA_TEAM_GOODGUYS then
+			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
+		end
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 		-- punish late pickers
@@ -301,7 +304,10 @@ function CLet4Def:OnEntityKilled( event )
 	local killedTeam = killedUnit:GetTeam()
 	local attackerTeam = EntIndexToHScript( event.entindex_attacker ):GetTeam()
 	-- if a hero is killed...
-	if (killedUnit:IsRealHero()and not killedUnit:IsClone()) then	
+	if (killedUnit:IsRealHero()) then	
+		if killedUnit:IsClone() then
+			killedUnit = killedUnit:GetCloneSource()
+		end
 		if not killedUnit:IsReincarnating() then
 			-- if their hero is killed, game over for dire
 			if killedTeam == DOTA_TEAM_BADGUYS then

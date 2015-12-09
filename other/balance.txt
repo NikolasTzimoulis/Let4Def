@@ -1,6 +1,7 @@
 Radiant
 	constant respawn time 10s
 	+ cheaper buybacks
+	+ glyph cooldown reset after each tower death
 	- less passive xp, change passive xp function
 Dire
 	+can zoom out more
