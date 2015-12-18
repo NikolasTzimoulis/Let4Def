@@ -34,8 +34,10 @@ function CLet4Def:InitGameMode()
 	self.weaknessDistance = 1000 -- how close to the king a unit must be to not suffer from weakness
 	self.hPCapIncreaseRate = 1.0/(self.timeLimitBase) -- how much the dire unit hp cap should be increased in proportion to their max hp per second
 	self.radiantRespawnMultiplier = 2 -- multiplied with the hero's level to get the respawn timer for radiant
+	self.direVisionMultiplier = 2 -- how much extra vision the dire hero should get
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.autoGatherInterval = 30
+	self.autoDefendDistance = 3000
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -67,6 +69,8 @@ function CLet4Def:InitGameMode()
 	GameRules:SetPreGameTime(30)
 	GameRules:SetPostGameTime(30)
 	GameRules:SetGoldPerTick (0)
+	GameRules:GetGameModeEntity():SetCustomBuybackCooldownEnabled(true)
+	GameRules:GetGameModeEntity():SetCustomBuybackCostEnabled(true)
 	-- listen to some game events
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
@@ -167,7 +171,7 @@ function CLet4Def:DoOncePerSecond()
 	local allHeroes = HeroList:GetAllHeroes()
 	local xpPerSecond = (self.endgameXPTarget - self.xpSoFar) / (self.timeLimit - self.secondsPassed)
 	for _, hero in pairs( allHeroes ) do
-		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS and hero:IsAlive() then
+		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS and hero:IsAlive() and not hero:HasModifier("modifier_buyback_gold_penalty") then
 			self.modifiers:ApplyDataDrivenModifier( hero, hero, "xp_aura_modifier", {duration=-1} )
 			hero:AddExperience(xpPerSecond, false, true)
 		end
@@ -250,6 +254,9 @@ function CLet4Def:OnNPCSpawned( event )
 					MaxAbilities(spawnedUnit)
 					return nil
 				end)
+				-- give him vision
+				self.king:SetDayTimeVisionRange(self.king:GetDayTimeVisionRange() * self.direVisionMultiplier)
+				self.king:SetNightTimeVisionRange(self.king:GetNightTimeVisionRange() * self.direVisionMultiplier)
 				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "dire_strength_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
@@ -301,6 +308,7 @@ end
 -- Every time an NPC is killed do this:
 function CLet4Def:OnEntityKilled( event )
 	local killedUnit = EntIndexToHScript( event.entindex_killed )
+	local killedPlayerID = killedUnit:GetOwner():GetPlayerID()
 	local killedTeam = killedUnit:GetTeam()
 	local attackerTeam = EntIndexToHScript( event.entindex_attacker ):GetTeam()
 	-- if a hero is killed...
@@ -312,10 +320,11 @@ function CLet4Def:OnEntityKilled( event )
 			-- if their hero is killed, game over for dire
 			if killedTeam == DOTA_TEAM_BADGUYS then
 				self.winners = DOTA_TEAM_GOODGUYS
-			-- if radiant hero is killed, give them a short respawn time and no buyback cooldown
+			-- if radiant hero is killed, change their respawn time and buyback mechanics
 			elseif killedTeam == DOTA_TEAM_GOODGUYS then 
 				killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
 				killedUnit:SetBuybackCooldownTime(0)
+				PlayerResource:SetCustomBuybackCost(killedPlayerID, math.pow(killedUnit:GetLevel(),2)+0.5*PlayerResource:GetGold(killedPlayerID))
 			end
 			-- remove aegis buffs after hero death
 			if killedUnit:HasAbility("roshan_spell_block") then
@@ -395,6 +404,10 @@ function CLet4Def:OnEntityHurt( event )
 	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero() and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0) then
 			EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
+			--autopilot: send nearby creeps to defend dire hero
+			if self.autopilot then
+				self:AutoPilotDefend(attacker)
+			end
 			MinimapEvent(DOTA_TEAM_BADGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
 			self.lastHurtAnnouncement = self.secondsPassed
 		elseif (hurtUnit:GetUnitName() == "custom_npc_dota_roshan" and hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2) then
@@ -578,6 +591,14 @@ function CLet4Def:AutoPilotAttack()
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-5700,-5200,0), Queue = true} )
 			end
+		end
+	end
+end
+
+function CLet4Def:AutoPilotDefend(enemy)
+	for unit, i in pairs(self.spawnedList) do
+		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and CalcDistanceBetweenEntityOBB(unit, enemy) < self.autoDefendDistance then
+			ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = enemy:GetAbsOrigin(), Queue = false} )
 		end
 	end
 end

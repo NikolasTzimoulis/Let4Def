@@ -20,41 +20,43 @@
 		<Panel id="RadiantTips">
 			<Label id="TipsHeaderRadiant" class="Header" html="true" text="#tip_title" />
 			<Panel id="TipsRowRadiant" class="InfoRow">
-				<Label id="RadiantTipText01" class="TipText" html="true" text="#radiant_tip_1" />
-				<Label id="RadiantTipText02" class="TipText" html="true" text="#radiant_tip_2" />
-				<Label id="RadiantTipText03" class="TipText" html="true" text="#radiant_tip_3" />
-				<Label id="RadiantTipText04" class="TipText" html="true" text="#radiant_tip_4" />
-				<Label id="RadiantTipText05" class="TipText" html="true" text="#radiant_tip_5" />
-				<Label id="RadiantTipText06" class="TipText" html="true" text="#radiant_tip_6" />
-				<Label id="RadiantTipText07" class="TipText" html="true" text="#radiant_tip_7" />
-				<Label id="RadiantTipText08" class="TipText" html="true" text="#radiant_tip_8" />
-				<Label id="RadiantTipText09" class="TipText" html="true" text="#radiant_tip_9" />
-				<Label id="RadiantTipText10" class="TipText" html="true" text="#radiant_tip_10" />
-				<Label id="RadiantTipText11" class="TipText" html="true" text="#radiant_tip_11" />
-				<Label id="RadiantTipText12" class="TipText" html="true" text="#radiant_tip_12" />
-				<Label id="RadiantTipText13" class="TipText" html="true" text="#radiant_tip_13" />
-				<Label id="RadiantTipText14" class="TipText" html="true" text="#radiant_tip_14" />
-				<Label id="RadiantTipText15" class="TipText" html="true" text="#radiant_tip_15" />
+				<Label class="TipText" html="true" text="#radiant_tip_1" />
+				<Label class="TipText" html="true" text="#radiant_tip_2" />
+				<Label class="TipText" html="true" text="#radiant_tip_3" />
+				<Label class="TipText" html="true" text="#radiant_tip_4" />
+				<Label class="TipText" html="true" text="#radiant_tip_5" />
+				<Label class="TipText" html="true" text="#radiant_tip_6" />
+				<Label class="TipText" html="true" text="#radiant_tip_7" />
+				<Label class="TipText" html="true" text="#radiant_tip_8" />
+				<Label class="TipText" html="true" text="#radiant_tip_9" />
+				<Label class="TipText" html="true" text="#radiant_tip_10" />
+				<Label class="TipText" html="true" text="#radiant_tip_11" />
+				<Label class="TipText" html="true" text="#radiant_tip_12" />
+				<Label class="TipText" html="true" text="#radiant_tip_13" />
+				<Label class="TipText" html="true" text="#radiant_tip_14" />
+				<Label class="TipText" html="true" text="#radiant_tip_15" />
+				<Label class="TipText" html="true" text="#radiant_tip_16" />
 			</Panel>
 		</Panel>
 		<Panel id="DireTips">
 			<Label id="TipsHeaderDire" class="Header" html="true" text="#tip_title" />
 			<Panel id="TipsRowDire" class="InfoRow">
-				<Label id="DireTipText01" class="TipText" html="true" text="#dire_tip_1" />
-				<Label id="DireTipText02" class="TipText" html="true" text="#dire_tip_2" />
-				<Label id="DireTipText03" class="TipText" html="true" text="#dire_tip_3" />
-				<Label id="DireTipText04" class="TipText" html="true" text="#dire_tip_4" />
-				<Label id="DireTipText05" class="TipText" html="true" text="#dire_tip_5" />
-				<Label id="DireTipText06" class="TipText" html="true" text="#dire_tip_6" />
-				<Label id="DireTipText07" class="TipText" html="true" text="#dire_tip_7" />
-				<Label id="DireTipText08" class="TipText" html="true" text="#dire_tip_8" />
-				<Label id="DireTipText09" class="TipText" html="true" text="#dire_tip_9" />
-				<Label id="DireTipText10" class="TipText" html="true" text="#dire_tip_10" />
-				<Label id="DireTipText11" class="TipText" html="true" text="#dire_tip_11" />
-				<Label id="DireTipText12" class="TipText" html="true" text="#dire_tip_12" />
-				<Label id="DireTipText13" class="TipText" html="true" text="#dire_tip_13" />
-				<Label id="DireTipText14" class="TipText" html="true" text="#dire_tip_14" />
-				<Label id="DireTipText15" class="TipText" html="true" text="#dire_tip_15" />
+				<Label class="TipText" html="true" text="#dire_tip_1" />
+				<Label class="TipText" html="true" text="#dire_tip_2" />
+				<Label class="TipText" html="true" text="#dire_tip_3" />
+				<Label class="TipText" html="true" text="#dire_tip_4" />
+				<Label class="TipText" html="true" text="#dire_tip_5" />
+				<Label class="TipText" html="true" text="#dire_tip_6" />
+				<Label class="TipText" html="true" text="#dire_tip_7" />
+				<Label class="TipText" html="true" text="#dire_tip_8" />
+				<Label class="TipText" html="true" text="#dire_tip_9" />
+				<Label class="TipText" html="true" text="#dire_tip_10" />
+				<Label class="TipText" html="true" text="#dire_tip_11" />
+				<Label class="TipText" html="true" text="#dire_tip_12" />
+				<Label class="TipText" html="true" text="#dire_tip_13" />
+				<Label class="TipText" html="true" text="#dire_tip_14" />
+				<Label class="TipText" html="true" text="#dire_tip_15" />
+				<Label class="TipText" html="true" text="#dire_tip_16" />
 			</Panel>
 		</Panel>
 	</Panel>
