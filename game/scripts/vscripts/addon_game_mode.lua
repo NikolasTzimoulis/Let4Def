@@ -308,7 +308,6 @@ end
 -- Every time an NPC is killed do this:
 function CLet4Def:OnEntityKilled( event )
 	local killedUnit = EntIndexToHScript( event.entindex_killed )
-	local killedPlayerID = killedUnit:GetOwner():GetPlayerID()
 	local killedTeam = killedUnit:GetTeam()
 	local attackerTeam = EntIndexToHScript( event.entindex_attacker ):GetTeam()
 	-- if a hero is killed...
@@ -322,6 +321,7 @@ function CLet4Def:OnEntityKilled( event )
 				self.winners = DOTA_TEAM_GOODGUYS
 			-- if radiant hero is killed, change their respawn time and buyback mechanics
 			elseif killedTeam == DOTA_TEAM_GOODGUYS then 
+				local killedPlayerID = killedUnit:GetOwner():GetPlayerID()
 				killedUnit:SetTimeUntilRespawn(self.radiantRespawnMultiplier*killedUnit:GetLevel())
 				killedUnit:SetBuybackCooldownTime(0)
 				PlayerResource:SetCustomBuybackCost(killedPlayerID, math.pow(killedUnit:GetLevel(),2)+0.5*PlayerResource:GetGold(killedPlayerID))
