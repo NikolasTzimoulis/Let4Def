@@ -81,6 +81,7 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "dota_item_picked_up", Dynamic_Wrap( CLet4Def, 'OnItemPickedUp' ), self )
 	--ListenToGameEvent( "dota_item_picked_up", PrintEventData, nil)
 	CustomGameEventManager:RegisterListener("autopilot_off", function(id, ...) Dynamic_Wrap(self, "DisableAutopilot")(self, ...) end)
+	GameRules:GetGameModeEntity():SetExecuteOrderFilter(Dynamic_Wrap(CLet4Def,"FilterExecuteOrder"),self)
 end
 
 -- Evaluate the state of the game
@@ -285,8 +286,13 @@ function CLet4Def:OnNPCSpawned( event )
 	spawnedUnit:SetDeathXP(0)	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() then
 		-- Make most dire units weaker than normal (put them on a list and use timer to re-apply weakness)
-		if string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then
+		if string.find(spawnedUnit:GetUnitName(), "upgraded") == nil then -- except super/megas
 			self.spawnedList[spawnedUnit] = false	
+		end
+		-- dire courier haste
+		if string.find(spawnedUnit:GetUnitName(), "courier") then
+			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_rune_haste", {duration = -1})
+			IncrementalModelScale(spawnedUnit, 0.3, 1)
 		end
 		-- Give full control of neutral units to dire
 		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
@@ -552,6 +558,19 @@ function CLet4Def:OnItemPickedUp(event)
 	end
 end
 
+function CLet4Def:FilterExecuteOrder(filterTable)
+	local abilityIndex = filterTable["entindex_ability"]
+	local ability = EntIndexToHScript(abilityIndex)
+	local issuer = filterTable["issuer_player_id_const"]
+	local orderType = filterTable["order_type"]
+	if orderType ==  DOTA_UNIT_ORDER_CAST_NO_TARGET and ability ~= nil and ability:GetName() == "item_courier" and PlayerResource:IsValidPlayerID(issuer) and PlayerResource:GetTeam(issuer) == DOTA_TEAM_GOODGUYS then
+		EmitAnnouncerSoundForTeam("announcer_ann_custom_generic_alert_15", DOTA_TEAM_GOODGUYS)	
+		GameRules:SendCustomMessageToTeam("no_courier", 0, 0, DOTA_TEAM_GOODGUYS)
+		return false
+	end
+	return true
+end
+
 function CLet4Def:DisableAutopilot(event)
 	self.autopilot = false
 	EmitAnnouncerSoundForTeam("General.Acknowledge", DOTA_TEAM_BADGUYS)	
@@ -561,7 +580,7 @@ function CLet4Def:AutopilotGather()
 	local gatherLocation = Vector(RandomInt(0, 6000),RandomInt(0, 6000),0)
 	for unit, i in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
-			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and GameRules:GetGameTime()-unit:GetCreationTime() <= self.autoGatherInterval then
+			if string.find(unit:GetUnitName(), "courier") == nil and unit:GetUnitName() ~= "custom_npc_dota_roshan" and GameRules:GetGameTime()-unit:GetCreationTime() <= self.autoGatherInterval then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = gatherLocation, Queue = false} )
 			elseif unit:GetUnitName() == "custom_npc_dota_roshan" and self.autoRosh == 0 then
 				self.autoRosh = 1

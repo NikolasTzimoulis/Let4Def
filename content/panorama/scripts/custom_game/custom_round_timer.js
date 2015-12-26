@@ -29,8 +29,16 @@ function ChangeTimeLimit(event) {
     TimeLimit = event.timelimit;
 }
 
+function RemoveCourier() {
+	//Remove courier controls for radiant
+	if (Game.GetPlayerIDsOnTeam( DOTATeam_t.DOTA_TEAM_GOODGUYS ).indexOf(Game.GetLocalPlayerID()) > -1) {
+		GameUI.SetDefaultUIEnabled( DotaDefaultUIElement_t.DOTA_DEFAULT_UI_INVENTORY_COURIER, false );      	
+	}
+}
+
 /* Initialization */
 (function() {
     GameEvents.Subscribe( "time_limit_change", ChangeTimeLimit);
     UpdateRoundTimer();
+	RemoveCourier();
 })();
