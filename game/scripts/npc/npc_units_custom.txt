@@ -118,7 +118,7 @@
 
 		// Armor
 		//----------------------------------------------------------------
-		"ArmorPhysical"				"4"			// Physical protection.
+		"ArmorPhysical"				"5"			// Physical protection.
 		"MagicalResistance"				"75"									// Magical protection (percentage).
 
 		// Attack
@@ -127,8 +127,8 @@
 		"AttackDamageMin"			"65"		// Damage range min.
 		"AttackDamageMax"			"65"		// Damage range max.
 		"AttackDamageType"			"DAMAGE_TYPE_ArmorPhysical"
-		"AttackRate"				"1"			// Speed of attack.
-		"AttackAnimationPoint"		"0.3"		// Normalized time in animation cycle to attack.
+		"AttackRate"				"2.0"			// Speed of attack.
+		"AttackAnimationPoint"		"0.6"		// Normalized time in animation cycle to attack.
 		"AttackAcquisitionRange"	"150"		// Range within a target can be acquired.
 		"AttackRange"				"128"		// Range within a target can be attacked.
 		"ProjectileModel"			"particles/base_attacks/ranged_goodguy.vpcf" // Particle system model for projectile.
@@ -162,7 +162,7 @@
 		// Team
 		//----------------------------------------------------------------
 		"TeamName"					"DOTA_TEAM_NEUTRALS"			// Team name.
-		"CombatClassAttack"			"DOTA_COMBAT_CLASS_ATTACK_LIGHT"
+		"CombatClassAttack"			"DOTA_COMBAT_CLASS_ATTACK_HERO"
 		"CombatClassDefend"			"DOTA_COMBAT_CLASS_DEFEND_STRONG"
 		"UnitRelationshipClass"		"DOTA_NPC_UNIT_RELATIONSHIP_TYPE_DEFAULT"
 		
@@ -174,5 +174,5 @@
 		// Inventory
 		//----------------------------------------------------------------
 		"HasInventory"				"1"
-	}
+	}	
 }
