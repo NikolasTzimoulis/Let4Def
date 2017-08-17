@@ -12,3 +12,6 @@ game/panorama/layout/custom_game/statcollection.xml
 game/scripts/vscripts/libraries/
 *.jpg
 *.psd
+*.soc
+*.tmp
+*server_log.txt
