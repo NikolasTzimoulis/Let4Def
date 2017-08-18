@@ -484,7 +484,7 @@ function CLet4Def:AutoPilotDefend(enemy)
 end
 
 function AutoPilotAttackWait()
-	local wait = RandomInt(90, 180)
+	local wait = RandomInt(120, 180)
 	return wait
 end
 

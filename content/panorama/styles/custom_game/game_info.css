@@ -6,7 +6,7 @@
  
 Label
 {
-    font-size: 18px;
+    font-size: 25px;
     color: #999999;
     vertical-align: top;
 }
@@ -55,40 +55,40 @@ Label
 
 #RadiantTips
 {
-	width:100%;
+	width:80%;
 	flow-children: down;
 	margin-top: 100px;
-	margin-right: 10px;
+	margin-right: 100px;
 }
 
 #DireTips
 {
-	width:100%;
+	width:80%;
 	flow-children: down;
 	margin-top: 100px;
-	margin-right: 10px;
+	margin-right: 100px;
 }
 
 #TipsHeaderRadiant
 {
-	margin-top: -18px;
+	margin-top: 0px;
 }
 
 #TipsHeaderDire
 {
-	margin-top: -18px;
+	margin-top: 0px;
 }
 
 #TipsRowRadiant
 {
 	flow-children: down;
-	margin-top: 18px;	
+	margin-top: 10px;	
 }
 
 #TipsRowDire
 {
 	flow-children: down;
-	margin-top: 18px;
+	margin-top: 10px;
 }
 
 #notyethints
@@ -105,8 +105,8 @@ Label
 
 .TipText
 {
-	margin-left: 10px;
-    margin-top: 20px;
+	margin-left: 0px;
+    margin-top: 10px;
 }
 
 .InfoRow
