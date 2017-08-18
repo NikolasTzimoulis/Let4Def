@@ -32,7 +32,6 @@ function CLet4Def:InitGameMode()
 	self.addedIntervalPerMissingPlayer = 10
 	self.xpMultiplier = 2
 	self.goldMultiplier = 2
-	self.roshThinkInterval = 5
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -189,21 +188,19 @@ function CLet4Def:DoOncePerSecond()
 		end
 	end
 	
-	-- roshan bodyguard logic
-	if (self.secondsPassed % self.roshThinkInterval == 1) then
-		if IsValidEntity(self.roshan) and IsValidEntity(self.king) then
-			--print(self.lastAttacker)
-			if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
-				-- leash to dire hero
-				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = self.king:GetEntityIndex(), Queue = false} )			 
-				self.lastAttacker = nil
-			elseif IsValidEntity(self.lastAttacker) then
-				-- attack attacker
-				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_CAST_NO_TARGET, AbilityIndex = self.roshan:FindAbilityByName("roshan_slam"):GetEntityIndex(), Queue = false} ) 
-				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.lastAttacker:GetEntityIndex(), Queue = true} )
-			else
-				self.lastAttacker = nil
-			end
+	-- roshan bodyguard logic IsCooldownReady
+	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() then
+		--print(self.lastAttacker)
+		if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
+			-- leash to dire hero
+			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = self.king:GetEntityIndex(), Queue = false} )			 
+			self.lastAttacker = nil
+		elseif IsValidEntity(self.lastAttacker) then
+			-- attack attacker
+			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_CAST_NO_TARGET, AbilityIndex = self.roshan:FindAbilityByName("roshan_slam"):GetEntityIndex(), Queue = false} ) 
+			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.lastAttacker:GetEntityIndex(), Queue = true} )
+		else
+			self.lastAttacker = nil
 		end
 	end
 	
@@ -255,6 +252,8 @@ function CLet4Def:OnNPCSpawned( event )
 					MaxAbilities(spawnedUnit)
 					return nil
 				end)
+				-- give him the cheese
+				spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
 				-- give him his modifiers
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
@@ -311,9 +310,8 @@ function CLet4Def:OnNPCSpawned( event )
 	-- roshan spawned 
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		self.roshan = spawnedUnit
-		-- give him aegis and cheese
+		-- give him aegis
 		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
-		spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
 	end
 end
 
