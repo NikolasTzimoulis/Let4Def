@@ -10,11 +10,7 @@ function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
-	PrecacheResource("particle", "particles/items_fx/aura_hp_cap_ring.vpcf", context)
-	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_lines.vpcf", context)
-	PrecacheResource("particle", "particles/units/heroes/hero_oracle/oracle_purifyingflames_head.vpcf", context)
 	PrecacheResource("particle", "particles/neutral_fx/roshan_spawn.vpcf", context)
-	PrecacheResource("particle", "particles/econ/courier/courier_roshan_lava/courier_roshan_lava.vpcf", context)
 	PrecacheResource("particle", "particles/hw_fx/hw_roshan_death.vpcf", context)
 end
 
@@ -32,11 +28,11 @@ function CLet4Def:InitGameMode()
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.autoGatherInterval = 30
 	self.autoDefendDistance = 1500
-	self.maxCreeps = 1
 	self.maxCreepsAddInterval = 15
 	self.addedIntervalPerMissingPlayer = 10
 	self.xpMultiplier = 2
 	self.goldMultiplier = 2
+	self.roshThinkInterval = 5
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -46,6 +42,7 @@ function CLet4Def:InitGameMode()
 	self.king = nil
 	self.roshan = nil
 	self.lastAttacker = nil
+	self.maxCreeps = 0
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
@@ -71,10 +68,8 @@ function CLet4Def:InitGameMode()
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
 	ListenToGameEvent( "entity_hurt", Dynamic_Wrap( CLet4Def, 'OnEntityHurt' ), self )
-	ListenToGameEvent( "player_chat", Dynamic_Wrap( CLet4Def, 'OnChat' ), self )
 	--ListenToGameEvent( "dota_item_picked_up", PrintEventData, nil)
 	CustomGameEventManager:RegisterListener("autopilot_off", function(id, ...) Dynamic_Wrap(self, "DisableAutopilot")(self, ...) end)
-	GameRules:GetGameModeEntity():SetExecuteOrderFilter(Dynamic_Wrap(CLet4Def,"FilterExecuteOrder"),self)
 end
 
 -- Evaluate the state of the game
@@ -195,22 +190,25 @@ function CLet4Def:DoOncePerSecond()
 	end
 	
 	-- roshan bodyguard logic
-	if IsValidEntity(self.roshan) and IsValidEntity(self.king) then
-		--print(self.lastAttacker)
-		if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
-			-- leash to dire hero
-			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = self.king:GetEntityIndex(), Queue = false} )			 
-			self.lastAttacker = nil
-		elseif IsValidEntity(self.lastAttacker) then
-			-- attack attacker
-			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_CAST_NO_TARGET, AbilityIndex = self.roshan:FindAbilityByName("roshan_slam"):GetEntityIndex(), Queue = false} ) 
-			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.lastAttacker:GetEntityIndex(), Queue = true} )
+	if (self.secondsPassed % self.roshThinkInterval == 1) then
+		if IsValidEntity(self.roshan) and IsValidEntity(self.king) then
+			--print(self.lastAttacker)
+			if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
+				-- leash to dire hero
+				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = self.king:GetEntityIndex(), Queue = false} )			 
+				self.lastAttacker = nil
+			elseif IsValidEntity(self.lastAttacker) then
+				-- attack attacker
+				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_CAST_NO_TARGET, AbilityIndex = self.roshan:FindAbilityByName("roshan_slam"):GetEntityIndex(), Queue = false} ) 
+				ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.lastAttacker:GetEntityIndex(), Queue = true} )
+			else
+				self.lastAttacker = nil
+			end
 		end
 	end
 	
-	--every minute
+	--every minute re-check number of players 
 	if (self.secondsPassed % 60 == 1) then
-		-- re-check number of players 
 		local newRadiantPlayerCount = 0
 		local newDirePlayerCount = 0
 		for playerid = 0, DOTA_MAX_PLAYERS do
@@ -248,6 +246,8 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:IsRealHero() then		
 		if spawnedUnit:GetTeamNumber() == DOTA_TEAM_BADGUYS then
 			if not IsValidEntity(self.king) then
+				-- make dire hero model bigger
+				IncrementalModelScale(spawnedUnit, 0.4, 1)
 				-- remember dire hero since we need this information elsewhere
 				self.king = spawnedUnit	
 				-- Get dire hero to level 25
@@ -266,8 +266,6 @@ function CLet4Def:OnNPCSpawned( event )
 					SendToServerConsole("sv_cheats_1;dota_spawn_neutrals;sv_cheats 0")					
 				end
 			end
-			-- make dire hero model bigger
-			IncrementalModelScale(spawnedUnit, 0.4, 1)
 		end
 	end
 	-- Remove radiant creeps from the game
@@ -285,18 +283,24 @@ function CLet4Def:OnNPCSpawned( event )
 		if string.find(spawnedUnit:GetUnitName(), "courier") then
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_rune_haste", {duration = -1})
 			IncrementalModelScale(spawnedUnit, 0.3, 1)
-		end
-		-- Give full control of neutral units to dire
-		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
-			self:giveDireControl(spawnedUnit)	
+		else		
 			-- dire creep effects
 			table.insert(self.stonedList, spawnedUnit)
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_medusa_stone_gaze_stone", {duration = -1}) 
-			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_phased", {duration = -1}) 
+			Timers:CreateTimer(5, function()
+				if IsValidEntity(spawnedUnit) then
+					spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_phased", {duration = -1}) 
+				end
+			end)
 			spawnedUnit:SetHealth(1)
 			spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
 			spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplier)
 			spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.goldMultiplier)
+		end
+		
+		-- Give full control of neutral units to dire
+		if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_BADGUYS then
+			self:giveDireControl(spawnedUnit)	
 		end		
 	end
 	-- remake roshan
@@ -405,25 +409,6 @@ function CLet4Def:giveDireControl(unit)
 	end
 end
 
-function CLet4Def:OnChat(event)
-	if event.text == 'bots' then
-		self:EnableBots()
-	end
-end
-
-function CLet4Def:EnableBots()
-	SendToServerConsole("dota_bot_populate")
-	GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
-	GameRules:GetGameModeEntity():SetBotsInLateGame(true)
-	for _, hero in pairs( HeroList:GetAllHeroes() ) do
-		if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS then
-			hero:SetBotDifficulty(3)
-		elseif hero:GetTeamNumber() == DOTA_TEAM_BADGUYS then
-			hero:SetBotDifficulty(4)
-		end
-	end
-end
-
 function CLet4Def:ForceOnePlayerToDire()
 	for playerid = 0, DOTA_MAX_PLAYERS do
 		if PlayerResource:IsValidPlayer(playerid) then
@@ -448,18 +433,14 @@ function CLet4Def:ForceOnePlayerToDire()
 	end
 end
 
-function CLet4Def:FilterExecuteOrder(filterTable)
-	local abilityIndex = filterTable["entindex_ability"]
-	local ability = EntIndexToHScript(abilityIndex)
-	local issuer = filterTable["issuer_player_id_const"]
-	local orderType = filterTable["order_type"]
-
-	return true
-end
-
 function CLet4Def:DisableAutopilot(event)
 	self.autopilot = false
 	EmitAnnouncerSoundForTeam("General.Acknowledge", DOTA_TEAM_BADGUYS)	
+	for i, unit in pairs(self.spawnedList) do
+		if IsValidEntity(unit) then
+			ExecuteOrderFromTable({UnitIndex = unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_STOP, Queue = false})
+		end
+	end
 end
 
 function CLet4Def:AutopilotGather()
