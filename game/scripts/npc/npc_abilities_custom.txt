@@ -71,6 +71,10 @@
 			{
 				"TextureName"    "yolo"
 			}
+			"maxcreep_modifier"
+			{
+				"TextureName"    "population"
+			}
 			"dire_strength_modifier"
 			{
 				"TextureName"    "hp_cap_purge"
