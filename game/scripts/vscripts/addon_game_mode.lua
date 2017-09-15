@@ -183,7 +183,6 @@ function CLet4Def:DoOncePerSecond()
 		table.remove(self.stonedList, 1)		
 		if IsValidEntity(unit) then
 			unit:RemoveModifierByName("modifier_medusa_stone_gaze_stone")
-			unit:RemoveModifierByName("modifier_phased")
 			unit:RemoveModifierByName("dire_weakness_modifier")
 			--print("Unfreezing " .. unit:GetUnitName())
 			EmitSoundOn("ui.shortwhoosh", unit)
@@ -278,25 +277,23 @@ function CLet4Def:OnNPCSpawned( event )
 	end	
 	-- Remake dire lane creeps	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_NEUTRALS and string.find(spawnedUnit:GetUnitName(), "badguys") and (string.find(spawnedUnit:GetUnitName(), "creep") or string.find(spawnedUnit:GetUnitName(), "siege")) then
-		local creep = CreateUnitByName(spawnedUnit:GetUnitName(), spawnedUnit:GetAbsOrigin(), false, nil, nil, DOTA_TEAM_NEUTRALS)
-		FindClearSpaceForUnit(creep, spawnedUnit:GetAbsOrigin(), true)
+		local creep = CreateUnitByName(spawnedUnit:GetUnitName(), spawnedUnit:GetAbsOrigin()+RandomVector(RandomInt(200,300)), false, nil, nil, DOTA_TEAM_NEUTRALS)
+		Timers:CreateTimer(1, function()
+			FindClearSpaceForUnit(creep, creep:GetAbsOrigin(), true)
+			creep:AddNewModifier(spawnedUnit, nil, "modifier_phased", {duration = 1})
+		end)
 		spawnedUnit:RemoveSelf()
 	end	
 	if spawnedUnit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS and not spawnedUnit:IsHero() and not spawnedUnit:IsConsideredHero() then
 		-- dire courier haste
 		if string.find(spawnedUnit:GetUnitName(), "courier") then
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_rune_haste", {duration = -1})
-			IncrementalModelScale(spawnedUnit, 0.3, 1)
-		else		
+			IncrementalModelScale(spawnedUnit, 0.25, 1)
+		elseif spawnedUnit:GetAttackCapability() > 0 then
 			-- dire creep effects
 			table.insert(self.stonedList, spawnedUnit)
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_medusa_stone_gaze_stone", {duration = -1}) 
 			self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "dire_weakness_modifier", {duration=-1} )
-			Timers:CreateTimer(5, function()
-				if IsValidEntity(spawnedUnit) then
-					spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_phased", {duration = -1}) 
-				end
-			end)
 			spawnedUnit:SetHealth(1)
 			spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
 			spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplier)
