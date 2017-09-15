@@ -6,6 +6,8 @@ if CLet4Def == nil then
 end
 
 function Precache( context )
+	PrecacheResource("soundfile", "soundevents/game_sounds_ui_imported.vsndevts", context)
+	PrecacheResource("soundfile", "soundevents/game_sounds.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_roshan_halloween.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
@@ -170,9 +172,8 @@ function CLet4Def:DoOncePerSecond()
 	
 	-- clean up spawnedList
 	for i, unit in pairs(self.spawnedList) do
-		if not IsValidEntity(unit) then
+		if not IsValidEntity(unit) or not unit:IsAlive() then
 			table.remove(self.spawnedList, i)
-			--print("Removing " .. tostring(unit))
 		end 
 	end
 	
@@ -185,7 +186,8 @@ function CLet4Def:DoOncePerSecond()
 			unit:RemoveModifierByName("modifier_phased")
 			unit:RemoveModifierByName("dire_weakness_modifier")
 			--print("Unfreezing " .. unit:GetUnitName())
-			MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
+			EmitSoundOn("ui.shortwhoosh", unit)
+			MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y, DOTA_MINIMAP_EVENT_TEAMMATE_TELEPORTING, 1)
 			--MinimapEvent(DOTA_TEAM_GOODGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
 			table.insert(self.spawnedList, unit)
 		end
@@ -437,7 +439,7 @@ end
 
 function CLet4Def:DisableAutopilot(event)
 	self.autopilot = false
-	EmitAnnouncerSoundForTeam("General.Acknowledge", DOTA_TEAM_BADGUYS)	
+	EmitAnnouncerSoundForTeam("General.Cancel", DOTA_TEAM_BADGUYS)	
 	for i, unit in pairs(self.spawnedList) do
 		if IsValidEntity(unit) then
 			ExecuteOrderFromTable({UnitIndex = unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_STOP, Queue = false})
