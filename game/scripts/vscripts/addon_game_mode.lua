@@ -113,10 +113,12 @@ function CLet4Def:OnThink()
 		-- activate max creep incrementing
 		Timers:CreateTimer(self.maxCreepsAddInterval, function()			
 				self.maxCreeps = self.maxCreeps + 1	
+				local dur = self.maxCreepsAddInterval + self.missingPlayers * self.addedIntervalPerMissingPlayer
 				if IsValidEntity(self.king) then
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=dur} )
 					self.king:SetModifierStackCount("maxcreep_modifier", self.king, self.maxCreeps)
 				end
-				return self.maxCreepsAddInterval + self.missingPlayers * self.addedIntervalPerMissingPlayer
+				return dur
 			end)
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
@@ -181,14 +183,15 @@ function CLet4Def:DoOncePerSecond()
 		if IsValidEntity(unit) then
 			unit:RemoveModifierByName("modifier_medusa_stone_gaze_stone")
 			unit:RemoveModifierByName("modifier_phased")
+			unit:RemoveModifierByName("dire_weakness_modifier")
 			--print("Unfreezing " .. unit:GetUnitName())
-			--MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
+			MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
 			--MinimapEvent(DOTA_TEAM_GOODGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
 			table.insert(self.spawnedList, unit)
 		end
 	end
 	
-	-- roshan bodyguard logic IsCooldownReady
+	-- roshan bodyguard logic
 	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() then
 		--print(self.lastAttacker)
 		if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
@@ -258,8 +261,8 @@ function CLet4Def:OnNPCSpawned( event )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
 				spawnedUnit:SetModifierStackCount("maxcreep_modifier", spawnedUnit, self.maxCreeps)
-				-- change his colour to red
-				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 0, 0)
+				-- change his colour to white
+				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 255, 255)
 				-- jungle fix
 				if self.secondsPassed ~= nil and self.secondsPassed > 30 then
 					SendToServerConsole("sv_cheats_1;dota_spawn_neutrals;sv_cheats 0")					
@@ -286,6 +289,7 @@ function CLet4Def:OnNPCSpawned( event )
 			-- dire creep effects
 			table.insert(self.stonedList, spawnedUnit)
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_medusa_stone_gaze_stone", {duration = -1}) 
+			self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "dire_weakness_modifier", {duration=-1} )
 			Timers:CreateTimer(5, function()
 				if IsValidEntity(spawnedUnit) then
 					spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_phased", {duration = -1}) 

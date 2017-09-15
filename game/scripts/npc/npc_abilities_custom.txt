@@ -62,10 +62,11 @@
 			"dire_weakness_modifier"
 			{
 				"TextureName"    "hp_cap"
-			}
-			"xp_aura_modifier"
-			{
-				"TextureName"    "custom_games_xp_coin"
+				States
+				{
+					"MODIFIER_STATE_NOT_ON_MINIMAP" "MODIFIER_STATE_VALUE_ENABLED"
+				}
+				
 			}
 			"yolo_modifier"
 			{
@@ -75,20 +76,7 @@
 			{
 				"TextureName"    "population"
 			}
-			"dire_strength_modifier"
-			{
-				"TextureName"    "hp_cap_purge"
-				"OnCreated"
-				{
-					"AttachEffect"
-					{
-						"Target" "CASTER"
-						"EffectName" "particles/items_fx/aura_hp_cap_ring.vpcf"
-						"EffectAttachType" "follow_origin"
-						"EffectLifeDurationScale" "1"
-					}
-				}
-			}
+
 		}
 	}
 }
