@@ -33,7 +33,7 @@ function CLet4Def:InitGameMode()
 	self.maxCreepsAddInterval = 15
 	self.addedIntervalPerMissingPlayer = 10
 	self.xpMultiplier = 2
-	self.goldMultiplier = 2
+	self.goldMultiplierRadiant = 2
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -49,6 +49,7 @@ function CLet4Def:InitGameMode()
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	self.missingPlayers = 0
 	self.lastHurtAnnouncement = -math.huge
+	self.goldMultiplierDire = self.radiantPlayerCount - self.missingPlayers
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
@@ -65,6 +66,9 @@ function CLet4Def:InitGameMode()
 	GameRules:SetGoldPerTick (0)
 	GameRules:GetGameModeEntity():SetCustomBuybackCooldownEnabled(true)
 	GameRules:GetGameModeEntity():SetCustomBuybackCostEnabled(true)
+	GameRules:SetUseBaseGoldBountyOnHeroes( false )
+	-- create a filter to change gold bounty awards on the fly
+	GameRules:GetGameModeEntity():SetModifyGoldFilter( Dynamic_Wrap( CLet4Def, "FilterGold" ), self )
 	-- listen to some game events
 	ListenToGameEvent( "npc_spawned", Dynamic_Wrap( CLet4Def, "OnNPCSpawned" ), self )
 	ListenToGameEvent( "entity_killed", Dynamic_Wrap( CLet4Def, 'OnEntityKilled' ), self )
@@ -257,9 +261,17 @@ function CLet4Def:OnNPCSpawned( event )
 					return nil
 				end)
 				-- give him the cheese
-				spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+				Timers:CreateTimer(1, function()
+					if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
+						spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+					else
+						return 1
+					end
+				end)
 				-- give him his modifiers
-				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
+				--self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
+				spawnedUnit:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
 				spawnedUnit:SetModifierStackCount("maxcreep_modifier", spawnedUnit, self.maxCreeps)
 				-- change his colour to white
@@ -296,8 +308,8 @@ function CLet4Def:OnNPCSpawned( event )
 			self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "dire_weakness_modifier", {duration=-1} )
 			spawnedUnit:SetHealth(1)
 			spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
-			spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplier)
-			spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.goldMultiplier)
+			spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplierRadiant)
+			spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.goldMultiplierRadiant)
 		end
 		
 		-- Give full control of neutral units to dire
@@ -314,8 +326,28 @@ function CLet4Def:OnNPCSpawned( event )
 	if spawnedUnit:GetUnitName() == "custom_npc_dota_roshan" then
 		self.roshan = spawnedUnit
 		-- give him aegis
-		spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
+		Timers:CreateTimer(1, function()
+			spawnedUnit:AddItem(CreateItem("item_aegis", nil, nil))
+		end)
 	end
+end
+
+-- change gold bounty awards on the fly
+function CLet4Def:FilterGold(filterTable)
+    local gold = filterTable["gold"]
+    local playerID = filterTable["player_id_const"]
+    local reason = filterTable["reason_const"]
+    local reliable = filterTable["reliable"] == 1
+
+    -- Special handling of hero kill gold (both bounty and assist gold goes through here first)
+	self.goldMultiplierDire = self.radiantPlayerCount - self.missingPlayers
+	if IsValidEntity(self.king) then
+		self.king:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
+	end
+    if PlayerResource:GetTeam(playerID) == DOTA_TEAM_BADGUYS then
+		filterTable["gold"] = gold * self.goldMultiplierDire
+	end
+    return true
 end
 
 -- Every time an NPC is killed do this:
@@ -343,7 +375,8 @@ function CLet4Def:OnEntityKilled( event )
 			-- give dire hero his modifiers back
 			if killedTeam == DOTA_TEAM_BADGUYS then
 				Timers:CreateTimer(5.1, function()
-					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
+					spawnedUnit:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
 					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
 					self.king:SetModifierStackCount("maxcreep_modifier", self.king, self.maxCreeps)
 				end)

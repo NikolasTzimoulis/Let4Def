@@ -1,8 +1,0 @@
-Radiant
-	constant respawn time?
-	+ glyph cooldown reset after each tower death
-Dire
-	+can zoom out more
-	-hp cap increase updates every minute all at once
-	-change hp cap function
-	-supercreeps affected by hp cap

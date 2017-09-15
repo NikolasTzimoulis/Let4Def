@@ -76,6 +76,10 @@
 			{
 				"TextureName"    "population"
 			}
+			"gold_multiplier"
+			{
+				"TextureName"	"gold_multiplier"
+			}
 
 		}
 	}
