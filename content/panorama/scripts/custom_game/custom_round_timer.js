@@ -40,5 +40,5 @@ function RemoveCourier() {
 (function() {
     GameEvents.Subscribe( "time_limit_change", ChangeTimeLimit);
     UpdateRoundTimer();
-	RemoveCourier();
+	//RemoveCourier();
 })();
