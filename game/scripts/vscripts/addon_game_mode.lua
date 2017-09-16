@@ -91,7 +91,7 @@ function CLet4Def:OnThink()
 	end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 
-	end
+    end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS and self.secondsPassed == nil then
 		-- activate once per second think function
 		Timers:CreateTimer(function()			
@@ -126,6 +126,20 @@ function CLet4Def:OnThink()
 				end
 				return dur
 			end)
+			
+		--remove backdoor protection
+		local allEntities = Entities:FindAllInSphere(Vector(0,0,0), 10000)
+		for i=1, table.getn(allEntities) do
+			if IsValidEntity(allEntities[i]) and allEntities[i].HasAbility then
+				if allEntities[i]:HasAbility("backdoor_protection_in_base") then
+					allEntities[i]:RemoveAbility("backdoor_protection_in_base")
+					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection_in_base")
+				elseif allEntities[i]:HasAbility("backdoor_protection") then
+					allEntities[i]:RemoveAbility("backdoor_protection")
+					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection")
+				end
+			end
+		end
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
 		return nil
