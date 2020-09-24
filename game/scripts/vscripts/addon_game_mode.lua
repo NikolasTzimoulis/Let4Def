@@ -42,7 +42,7 @@ function CLet4Def:InitGameMode()
 	self.stonedList = {}
 	self.king = nil
 	self.roshan = nil
-	self.lastAttacker = nil
+	self.roshTarget = nil
 	self.maxCreeps = 0
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
@@ -212,17 +212,17 @@ function CLet4Def:DoOncePerSecond()
 	
 	-- roshan bodyguard logic
 	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() then
-		--print(self.lastAttacker)
+		--print(self.roshTarget)
 		if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
 			-- leash to dire hero
 			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = self.king:GetEntityIndex(), Queue = false} )			 
-			self.lastAttacker = nil
-		elseif IsValidEntity(self.lastAttacker) then
+			self.roshTarget = nil
+		elseif IsValidEntity(self.roshTarget) then
 			-- attack attacker
 			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_CAST_NO_TARGET, AbilityIndex = self.roshan:FindAbilityByName("roshan_slam"):GetEntityIndex(), Queue = false} ) 
-			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.lastAttacker:GetEntityIndex(), Queue = true} )
+			ExecuteOrderFromTable( {UnitIndex=self.roshan:GetEntityIndex(), OrderType =  DOTA_UNIT_ORDER_ATTACK_TARGET, TargetIndex = self.roshTarget:GetEntityIndex(), Queue = true} )
 		else
-			self.lastAttacker = nil
+			self.roshTarget = nil
 		end
 	end
 	
@@ -274,10 +274,12 @@ function CLet4Def:OnNPCSpawned( event )
 					MaxAbilities(spawnedUnit)
 					return nil
 				end)
-				-- give him the cheese
+				-- give him the roshan items
 				Timers:CreateTimer(1, function()
 					if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
 						spawnedUnit:AddItem(CreateItem("item_cheese", nil, nil))
+						spawnedUnit:AddItem(CreateItem("item_refresher_shard", nil, nil))
+						spawnedUnit:AddItem(CreateItem("item_ultimate_scepter_2", nil, nil))
 					else
 						return 1
 					end
@@ -426,7 +428,8 @@ function CLet4Def:OnEntityHurt( event )
 	-- hurt announcements for dire hero and rosh
 	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero()) then
-			self.lastAttacker = attacker
+			-- rosh targets enemy who attacked dire hero
+			self.roshTarget = attacker
 			if hurtUnit:GetHealth() < hurtUnit:GetMaxHealth()/2 and hurtUnit:GetHealth() > 0 then
 				EmitAnnouncerSoundForTeam("announcer_ann_custom_adventure_alerts_34", DOTA_TEAM_BADGUYS)
 				MinimapEvent(DOTA_TEAM_BADGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
@@ -438,6 +441,12 @@ function CLet4Def:OnEntityHurt( event )
 			MinimapEvent(DOTA_TEAM_BADGUYS, hurtUnit, hurtUnit:GetAbsOrigin().x, hurtUnit:GetAbsOrigin().y,   DOTA_MINIMAP_EVENT_HINT_LOCATION , self.announcementFrequency)
 		end
 	end
+	
+	-- rosh targets same target as dire hero 
+	if (attacker:GetTeam() == DOTA_TEAM_BADGUYS and attacker:IsRealHero()) then
+		self.roshTarget = hurtUnit
+	end
+	
 end
 
 function CLet4Def:giveDireControl(unit)
@@ -539,7 +548,7 @@ function AutoPilotAttackWait()
 end
 
 function MaxAbilities( hero )
-	for _ = 1, 24 do
+	for _ = 1, 29 do
 		hero:HeroLevelUp(false)
 	end
     for i=0, hero:GetAbilityCount()-1 do
