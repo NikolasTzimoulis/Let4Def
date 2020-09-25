@@ -118,27 +118,27 @@
 
 		// Armor
 		//----------------------------------------------------------------
-		"ArmorPhysical"				"5"			// Physical protection.
-		"MagicalResistance"				"75"									// Magical protection (percentage).
+		"ArmorPhysical"				"20"			// Physical protection.
+		"MagicalResistance"				"55"									// Magical protection (percentage).
 
 		// Attack
 		//----------------------------------------------------------------
 		"AttackCapabilities"		"DOTA_UNIT_CAP_MELEE_ATTACK"
-		"AttackDamageMin"			"65"		// Damage range min.
-		"AttackDamageMax"			"65"		// Damage range max.
+		"AttackDamageMin"			"75"		// Damage range min.
+		"AttackDamageMax"			"75"		// Damage range max.
 		"AttackDamageType"			"DAMAGE_TYPE_ArmorPhysical"
 		"AttackRate"				"2.0"			// Speed of attack.
 		"AttackAnimationPoint"		"0.6"		// Normalized time in animation cycle to attack.
 		"AttackAcquisitionRange"	"150"		// Range within a target can be acquired.
-		"AttackRange"				"128"		// Range within a target can be attacked.
+		"AttackRange"				"150"		// Range within a target can be attacked.
 		"ProjectileModel"			"particles/base_attacks/ranged_goodguy.vpcf" // Particle system model for projectile.
 		"ProjectileSpeed"			"1000"		// Speed of projectile.
 
 		// Bounty
 		//----------------------------------------------------------------
-		"BountyXP"					"1789"		// Experience earn.
-		"BountyGoldMin"				"150"		// Gold earned min.
-		"BountyGoldMax"				"400"		// Gold earned max.
+		"BountyXP"					"400"		// Experience earn.
+		"BountyGoldMin"				"200"		// Gold earned min.
+		"BountyGoldMax"				"290"		// Gold earned max.
 
 		// Bounds
 		//----------------------------------------------------------------
@@ -154,7 +154,7 @@
 
 		// Status
 		//----------------------------------------------------------------
-		"StatusHealth"				"7500"		// Base health.
+		"StatusHealth"				"6000"		// Base health.
 		"StatusHealthRegen"			"20"		// Health regeneration rate.
 		"StatusMana"				"0"		// Base mana.
 		"StatusManaRegen"			"0"		// Mana regeneration rate.
@@ -163,7 +163,7 @@
 		//----------------------------------------------------------------
 		"TeamName"					"DOTA_TEAM_NEUTRALS"			// Team name.
 		"CombatClassAttack"			"DOTA_COMBAT_CLASS_ATTACK_HERO"
-		"CombatClassDefend"			"DOTA_COMBAT_CLASS_DEFEND_STRONG"
+		"CombatClassDefend"			"DOTA_COMBAT_CLASS_DEFEND_HERO"
 		"UnitRelationshipClass"		"DOTA_NPC_UNIT_RELATIONSHIP_TYPE_DEFAULT"
 		
 		// Vision
@@ -174,5 +174,5 @@
 		// Inventory
 		//----------------------------------------------------------------
 		"HasInventory"				"1"
-	}	
+	}
 }

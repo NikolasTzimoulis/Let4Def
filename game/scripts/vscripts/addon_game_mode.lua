@@ -24,7 +24,7 @@ function Activate()
 end
 
 function CLet4Def:InitGameMode()
-	print("Starting Let 4 Def...")
+	--print("Starting Let 4 Def...")
 	-- game balance parameters
 	self.timeLimitBase = 20*60 -- 20 minutes game length
 	self.radiantRespawnMultiplier = 2 -- multiplied with the hero's level to get the respawn timer for radiant
@@ -51,6 +51,7 @@ function CLet4Def:InitGameMode()
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.winners = nil
+	self.botCheck = false
 	self.autopilot = true
 	self.autopilotList = {}
 	-- base rules	
@@ -63,6 +64,9 @@ function CLet4Def:InitGameMode()
 	GameRules:SetGoldPerTick (0)
 	GameRules:GetGameModeEntity():SetCustomBuybackCooldownEnabled(true)
 	GameRules:GetGameModeEntity():SetCustomBuybackCostEnabled(true)
+	GameRules:GetGameModeEntity():SetFreeCourierModeEnabled(true)
+	GameRules:GetGameModeEntity():SetUseDefaultDOTARuneSpawnLogic(true)
+	GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
 	GameRules:SetUseBaseGoldBountyOnHeroes( false )
 	-- create a filter to change gold bounty awards on the fly
 	GameRules:GetGameModeEntity():SetModifyGoldFilter( Dynamic_Wrap( CLet4Def, "FilterGold" ), self )
@@ -86,8 +90,9 @@ function CLet4Def:OnThink()
 			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 		end
 	end
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME then
-
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and self.botCheck == false then
+		self:SpawnBots()
+		self.botCheck = true
     end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS and self.secondsPassed == nil then
 		-- activate once per second think function
@@ -119,6 +124,18 @@ function CLet4Def:OnThink()
 			
 		--remove backdoor protection
 		 GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
+		local allEntities = Entities:FindAllInSphere(Vector(0,0,0), 10000)
+		for i=1, table.getn(allEntities) do
+			if IsValidEntity(allEntities[i]) and allEntities[i].HasAbility then
+				if allEntities[i]:HasAbility("backdoor_protection_in_base") then
+					allEntities[i]:RemoveAbility("backdoor_protection_in_base")
+					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection_in_base")
+				elseif allEntities[i]:HasAbility("backdoor_protection") then
+					allEntities[i]:RemoveAbility("backdoor_protection")
+					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection")
+				end
+			end
+		end
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
 		return nil
@@ -391,7 +408,7 @@ function CLet4Def:OnEntityHurt( event )
 	end
 	
 	-- rosh targets same target as dire hero 
-	if (attacker:GetTeam() == DOTA_TEAM_BADGUYS and attacker:IsRealHero()) then
+	if (IsValidEntity(attacker) and attacker:GetTeam() == DOTA_TEAM_BADGUYS and attacker:IsRealHero()) then
 		self.roshTarget = hurtUnit
 	end
 	
@@ -521,8 +538,46 @@ function CLet4Def:WakeUp(unit)
 	end
 end
 
+function CLet4Def:SpawnBots() 
+	self.botHeroes = {'npc_dota_hero_bane', 'npc_dota_hero_bounty_hunter', 'npc_dota_hero_bloodseeker', 'npc_dota_hero_bristleback', 'npc_dota_hero_chaos_knight', 'npc_dota_hero_crystal_maiden', 'npc_dota_hero_dazzle', 'npc_dota_hero_death_prophet', 'npc_dota_hero_drow_ranger', 'npc_dota_hero_earthshaker', 'npc_dota_hero_jakiro', 'npc_dota_hero_kunkka', 'npc_dota_hero_lina', 'npc_dota_hero_lion', 'npc_dota_hero_luna', 'npc_dota_hero_necrolyte', 'npc_dota_hero_omniknight', 'npc_dota_hero_oracle', 'npc_dota_hero_phantom_assassin', 'npc_dota_hero_pudge', 'npc_dota_hero_sand_king', 'npc_dota_hero_nevermore', 'npc_dota_hero_skywrath_mage', 'npc_dota_hero_sniper', 'npc_dota_hero_sven', 'npc_dota_hero_tiny', 'npc_dota_hero_viper', 'npc_dota_hero_warlock', 'npc_dota_hero_windrunner', 'npc_dota_hero_zuus'}
+	missingRadiant = self.radiantPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
+	missingDire = self.direPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
+	Tutorial:StartTutorialMode()	
+	
+	if missingDire > 0 then
+		local heroNumber = RandomInt(1, #self.botHeroes)	
+		--Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", false)
+		local bot = GameRules:AddBotPlayerWithEntityScript(self.botHeroes[heroNumber], string.sub(self.botHeroes[heroNumber], 15), DOTA_TEAM_BADGUYS, "", false)
+		Timers:CreateTimer(1, function()	
+			bot:SetBotDifficulty(4)
+			FindClearSpaceForUnit(bot, Vector(6900, 6400, 400), false)
+		end)
+		table.remove(self.botHeroes, heroNumber)
+	end
+	
+	for _ = 1, missingRadiant do
+		local heroNumber = RandomInt(1, #self.botHeroes)	
+		--Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", true)
+		local bot = GameRules:AddBotPlayerWithEntityScript(self.botHeroes[heroNumber], string.sub(self.botHeroes[heroNumber], 15), DOTA_TEAM_GOODGUYS, "", false)
+		Timers:CreateTimer(1, function()	
+			bot:SetBotDifficulty(4)
+			FindClearSpaceForUnit(bot, Vector(-6900, -6400, 400), false)
+		end)
+		table.remove(self.botHeroes, heroNumber)
+	end
+	
+	Timers:CreateTimer(1, function()			
+		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
+		GameRules:GetGameModeEntity():SetBotsInLateGame(true)
+		GameRules:GetGameModeEntity():SetBotsAlwaysPushWithHuman(true)
+		if missingDire == 0 then
+			GameRules:GetGameModeEntity():SetBotsMaxPushTier(0)
+		end
+	end)
+end
+
 function AutoPilotAttackWait()
-	local wait = RandomInt(10, 30)
+	local wait = RandomInt(30, 90)
 	return wait
 end
 
