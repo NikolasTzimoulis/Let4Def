@@ -33,6 +33,7 @@ function CLet4Def:InitGameMode()
 	self.autoDefendDistance = 1500
 	self.xpMultiplier = 2
 	self.goldMultiplierRadiant = 2
+	self.levelsPerMissingRadiantPlayer = 6
 	-- initialise stuff
 	GameRules:GetGameModeEntity():SetAnnouncerDisabled(true)
 	self.timeLimit = self.timeLimitBase
@@ -48,6 +49,8 @@ function CLet4Def:InitGameMode()
 	self.missingDire = 0
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	self.lastHurtAnnouncement = -math.huge
+	self.lastHurtDire = -math.huge
+	self.lastHurtRadiant = -math.huge
 	self.goldMultiplierDire = self.radiantPlayerCount
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
@@ -410,6 +413,10 @@ function CLet4Def:OnEntityHurt( event )
 		attacker = EntIndexToHScript(event.entindex_attacker)
 	end
 	
+	if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero()) then
+		self.lastHurtDire = self.secondsPassed
+	end	
+	
 	-- hurt announcements for dire hero and rosh
 	if self.secondsPassed ~= nil and self.secondsPassed - self.lastHurtAnnouncement > self.announcementFrequency then
 		if (hurtUnit:GetTeam() == DOTA_TEAM_BADGUYS and hurtUnit:IsRealHero()) then
@@ -439,16 +446,28 @@ function CLet4Def:OnEntityHurt( event )
 	
 	--extra effects when there are zero radiant players
 	if hurtUnit:GetTeam() == DOTA_TEAM_GOODGUYS and PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS) == 0 then
+		self.lastHurtRadiant = self.secondsPassed
 		if hurtUnit:FindAbilityByName("sandking_caustic_finale") == nil then
 			local abil = hurtUnit:AddAbility("sandking_caustic_finale")
 			abil:SetLevel(abil:GetMaxLevel())
 			local abil = hurtUnit:AddAbility("huskar_berserkers_blood")
 			abil:SetLevel(abil:GetMaxLevel())
+			local abil = hurtUnit:AddAbility("sniper_take_aim")			
 			--local abil = hurtUnit:AddAbility("slark_shadow_dance")
 			--abil:SetLevel(abil:GetMaxLevel())
 			--local abil = hurtUnit:AddAbility("shredder_reactive_armor")
 			--abil:SetLevel(abil:GetMaxLevel())
 		end
+		local hurtWait = self.lastHurtRadiant - self.lastHurtDire
+		local abil = hurtUnit:FindAbilityByName("sniper_take_aim")			
+		if hurtWait >= 5 and abil:GetLevel() > 0 and abil:GetCooldownTimeRemaining() <= 0 then
+			abil:CastAbility()
+			abil:StartCooldown(2)
+		elseif hurtWait >= 5 + 2 * abil:GetLevel() then			
+			if abil:GetLevel() < abil:GetMaxLevel() then
+				abil:SetLevel(abil:GetLevel() + 1)			
+			end
+		end		
 		if hurtUnit:GetHealth() < hurtUnit:GetMaxHealth() / 10 then
 			hurtUnit:AddNewModifier(hurtUnit, nil, "modifier_glyph_reset", {duration = -1}) 
 			ExecuteOrderFromTable({UnitIndex = hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_GLYPH, Queue = false})			
@@ -608,7 +627,7 @@ function CLet4Def:Balance()
 		local heroes = HeroList:GetAllHeroes()
 		for _,hero in pairs(heroes) do 
 			if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS and hero:IsRealHero() and not hero:IsClone() then
-				for _ = 1, 8 * self.missingRadiant do
+				for _ = 1, self.levelsPerMissingRadiantPlayer * self.missingRadiant do
 					hero:HeroLevelUp(false)
 				end
 			end		
@@ -633,14 +652,11 @@ function MaxAbilities( hero )
 	for _ = 1, 29 do
 		hero:HeroLevelUp(false)
 	end
-    for i=0, hero:GetAbilityCount()-1 do
-        local abil = hero:GetAbilityByIndex(i)
-        while abil ~= nil and abil:CanAbilityBeUpgraded() == 0 and abil:GetLevel() < abil:GetMaxLevel() do
-			local oldlevel = abil:GetLevel()
-			hero:UpgradeAbility(abil)
-			if oldlevel == abil:GetLevel() then 
-				--fix problematic abilities
-				abil:SetLevel(abil:GetMaxLevel())
+	for i=0, hero:GetAbilityCount()-1 do
+		local abil = hero:GetAbilityByIndex(i)
+		if abil ~= nil and not abil:IsTrained() and not abil:IsHidden() then
+			while abil:GetLevel() < abil:GetMaxLevel() do
+				hero:UpgradeAbility(abil)
 			end
 		end
     end
