@@ -1,4 +1,3 @@
-require("statcollection/init")
 require("libraries/timers")
 
 if CLet4Def == nil then
@@ -12,8 +11,10 @@ function Precache( context )
 	PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/game_sounds_ui.vsndevts", context)
 	PrecacheResource("soundfile", "soundevents/voscripts/game_sounds_vo_announcer.vsndevts", context)
+	PrecacheResource("particle", "particles/econ/items/oracle/oracle_ti10_immortal/oracle_ti10_immortal_purifyingflames_head_outline.vpcf", context)
 	PrecacheResource("particle", "particles/neutral_fx/roshan_spawn.vpcf", context)
 	PrecacheResource("particle", "particles/hw_fx/hw_roshan_death.vpcf", context)
+	PrecacheResource("particle", "particles/awaken_aura.vpcf", context )
 end
 
 -- Create the game mode when we activate
@@ -30,8 +31,6 @@ function CLet4Def:InitGameMode()
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.autoGatherInterval = 30
 	self.autoDefendDistance = 1500
-	self.maxCreepsAddInterval = 15
-	self.addedIntervalPerMissingPlayer = 10
 	self.xpMultiplier = 2
 	self.goldMultiplierRadiant = 2
 	-- initialise stuff
@@ -43,13 +42,11 @@ function CLet4Def:InitGameMode()
 	self.king = nil
 	self.roshan = nil
 	self.roshTarget = nil
-	self.maxCreeps = 0
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
-	self.missingPlayers = 0
 	self.lastHurtAnnouncement = -math.huge
-	self.goldMultiplierDire = self.radiantPlayerCount - self.missingPlayers
+	self.goldMultiplierDire = self.radiantPlayerCount
 	local dummy = CreateUnitByName("dummy_unit", Vector(0,0,0), false, nil, nil, DOTA_TEAM_NEUTRALS)
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
@@ -116,30 +113,12 @@ function CLet4Def:OnThink()
 				end
 			end)
 		end
-		-- activate max creep incrementing
-		Timers:CreateTimer(self.maxCreepsAddInterval, function()			
-				self.maxCreeps = self.maxCreeps + 1	
-				local dur = self.maxCreepsAddInterval + self.missingPlayers * self.addedIntervalPerMissingPlayer
-				if IsValidEntity(self.king) then
-					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=dur} )
-					self.king:SetModifierStackCount("maxcreep_modifier", self.king, self.maxCreeps)
-				end
-				return dur
-			end)
+		
+		--wake roshan early
+		self:WakeUp(self.roshan)
 			
 		--remove backdoor protection
-		local allEntities = Entities:FindAllInSphere(Vector(0,0,0), 10000)
-		for i=1, table.getn(allEntities) do
-			if IsValidEntity(allEntities[i]) and allEntities[i].HasAbility then
-				if allEntities[i]:HasAbility("backdoor_protection_in_base") then
-					allEntities[i]:RemoveAbility("backdoor_protection_in_base")
-					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection_in_base")
-				elseif allEntities[i]:HasAbility("backdoor_protection") then
-					allEntities[i]:RemoveAbility("backdoor_protection")
-					allEntities[i]:RemoveModifierByName("modifier_backdoor_protection")
-				end
-			end
-		end
+		 GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
 		return nil
@@ -195,20 +174,6 @@ function CLet4Def:DoOncePerSecond()
 		end 
 	end
 	
-	-- wake dire units if needed
-	if table.getn(self.spawnedList) < self.maxCreeps then
-		local unit = self.stonedList[1]
-		table.remove(self.stonedList, 1)		
-		if IsValidEntity(unit) then
-			unit:RemoveModifierByName("modifier_medusa_stone_gaze_stone")
-			unit:RemoveModifierByName("dire_weakness_modifier")
-			--print("Unfreezing " .. unit:GetUnitName())
-			EmitSoundOn("ui.shortwhoosh", unit)
-			MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y, DOTA_MINIMAP_EVENT_TEAMMATE_TELEPORTING, 1)
-			--MinimapEvent(DOTA_TEAM_GOODGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
-			table.insert(self.spawnedList, unit)
-		end
-	end
 	
 	-- roshan bodyguard logic
 	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() then
@@ -226,37 +191,27 @@ function CLet4Def:DoOncePerSecond()
 		end
 	end
 	
-	--every minute re-check number of players 
-	if (self.secondsPassed % 60 == 1) then
-		local newRadiantPlayerCount = 0
-		local newDirePlayerCount = 0
-		for playerid = 0, DOTA_MAX_PLAYERS do
-			if PlayerResource:IsValidPlayer(playerid) then
-				player = PlayerResource:GetPlayer(playerid)
-				if player ~= nil then
-					if PlayerResource:GetTeam(playerid) == DOTA_TEAM_GOODGUYS then
-						newRadiantPlayerCount = newRadiantPlayerCount + 1
-					elseif PlayerResource:GetTeam(playerid) == DOTA_TEAM_BADGUYS then
-						newDirePlayerCount = newDirePlayerCount + 1
+	-- dire hero wakeup aura
+	if IsValidEntity(self.king) then
+		local closeFriends = FindUnitsInRadius(DOTA_TEAM_BADGUYS, self.king:GetAbsOrigin(), nil, 1000, DOTA_UNIT_TARGET_TEAM_FRIENDLY, DOTA_UNIT_TARGET_BASIC, DOTA_UNIT_TARGET_FLAG_FOW_VISIBLE, 0, false) 
+		--print(#closeFriends)
+		if #closeFriends > 0 then
+			local doneEffect = false			
+			for i, unit in pairs(closeFriends) do
+				if unit:HasModifier("dire_weakness_modifier") then
+					self:WakeUp(unit)
+					if not doneEffect then
+						local effect_aura = ParticleManager:CreateParticle("particles/awaken_aura.vpcf", PATTACH_WORLDORIGIN, self.king)
+						ParticleManager:SetParticleControl(effect_aura,0,self.king:GetAbsOrigin())
+						ParticleManager:ReleaseParticleIndex(effect_aura)
+						doneEffect = true
 					end
 				end
 			end
 		end
-		local newTotalPlayerCount = newRadiantPlayerCount + newDirePlayerCount
-		if newTotalPlayerCount ~= self.totalPlayerCount then
-			if newTotalPlayerCount == 1 then
-				ShowGenericPopup("warning",  "1_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-			elseif newDirePlayerCount < 1 and self.secondsPassed == nil then
-				ShowGenericPopup("warning",  "no_dire_player", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 
-				self:ForceOnePlayerToDire()
-			elseif newRadiantPlayerCount ~= self.radiantPlayerCount and newRadiantPlayerCount > 0 and self.totalPlayerCount > 1 then
-				-- change difficulty
-				--ShowGenericPopup("warning",  "difficulty_changed", "", "", DOTA_SHOWGENERICPOPUP_TINT_SCREEN) 	
-				self.missingPlayers = self.radiantPlayerCount - newRadiantPlayerCount
-				GameRules:SendCustomMessage("difficulty_changed", 0, 0)
-			end
-		end
 	end
+
+	
 end
 
 -- Every time an npc is spawned do this:
@@ -286,10 +241,9 @@ function CLet4Def:OnNPCSpawned( event )
 				end)
 				-- give him his modifiers
 				--self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "yolo_modifier", {duration=-1} )
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1})
 				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
 				spawnedUnit:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
-				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
-				spawnedUnit:SetModifierStackCount("maxcreep_modifier", spawnedUnit, self.maxCreeps)
 				-- change his colour to white
 				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 255, 255)
 				-- jungle fix
@@ -319,8 +273,7 @@ function CLet4Def:OnNPCSpawned( event )
 			IncrementalModelScale(spawnedUnit, 0.25, 1)
 		elseif spawnedUnit:GetAttackCapability() > 0 then
 			-- dire creep effects
-			table.insert(self.stonedList, spawnedUnit)
-			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_medusa_stone_gaze_stone", {duration = -1}) 
+			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_stunned", {duration = -1}) 
 			self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "dire_weakness_modifier", {duration=-1} )
 			spawnedUnit:SetHealth(1)
 			spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
@@ -356,10 +309,6 @@ function CLet4Def:FilterGold(filterTable)
     local reliable = filterTable["reliable"] == 1
 
     -- Special handling of hero kill gold (both bounty and assist gold goes through here first)
-	self.goldMultiplierDire = self.radiantPlayerCount - self.missingPlayers
-	if IsValidEntity(self.king) then
-		self.king:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
-	end
     if PlayerResource:GetTeam(playerID) == DOTA_TEAM_BADGUYS then
 		filterTable["gold"] = gold * self.goldMultiplierDire
 	end
@@ -387,14 +336,13 @@ function CLet4Def:OnEntityKilled( event )
 				killedUnit:SetBuybackCooldownTime(0)
 				PlayerResource:SetCustomBuybackCost(killedPlayerID, math.pow(killedUnit:GetLevel(),2)+0.5*PlayerResource:GetGold(killedPlayerID))
 			end
-		else
+		else --if unit is coming back
 			-- give dire hero his modifiers back
 			if killedTeam == DOTA_TEAM_BADGUYS then
 				Timers:CreateTimer(5.1, function()
-					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
-					spawnedUnit:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
-					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1} )
-					self.king:SetModifierStackCount("maxcreep_modifier", self.king, self.maxCreeps)
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1})
+				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
+				self.king:SetModifierStackCount("gold_multiplier", self.king, self.goldMultiplierDire)
 				end)
 			end
 		end
@@ -445,6 +393,11 @@ function CLet4Def:OnEntityHurt( event )
 	-- rosh targets same target as dire hero 
 	if (attacker:GetTeam() == DOTA_TEAM_BADGUYS and attacker:IsRealHero()) then
 		self.roshTarget = hurtUnit
+	end
+	
+	--wake up hurt dire creeps
+	if (hurtUnit:HasModifier("dire_weakness_modifier")) then
+		self:WakeUp(hurtUnit)
 	end
 	
 end
@@ -514,20 +467,30 @@ function CLet4Def:AutopilotGather()
 end
 
 function CLet4Def:AutoPilotAttack()		
-	local  pivotID = RandomInt(1,3)
 	local pivotLocation = Vector(0,0,0)
-	if pivotID == 2 then
-		pivotLocation = Vector(-4500,6000, 0)
-	elseif pivotID == 3 then
-		pivotLocation = Vector(5800, -5400, 0)
-	end
-	--print("Attacking with " .. tostring(table.getn(self.spawnedList)) .. " units")
-	for i, unit in pairs(self.spawnedList) do
-		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
-			if unit:GetUnitName() ~= "custom_npc_dota_roshan" and self.autopilotList[unit] == 0 then
-				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
-				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-5700,-5200,0), Queue = true} )
-				self.autopilotList[unit] = 1
+	local minDistance = math.huge
+	
+	if #self.spawnedList > 0 then			
+		for i, buildingClassname in pairs({"npc_dota_tower", "npc_dota_barracks", "npc_dota_filler"}) do
+			for _, tower in pairs (Entities:FindAllByClassname(buildingClassname)) do
+				if tower:GetTeamNumber() == DOTA_TEAM_GOODGUYS and tower:GetInvulnCount() == 0 then
+					local dist = CalcDistanceBetweenEntityOBB(tower, self.spawnedList[1])
+					if dist < minDistance then
+						minDistance = dist
+						pivotLocation = tower:GetAbsOrigin()
+					end
+				end
+			end
+		end
+		
+		--print("Attacking with " .. tostring(table.getn(self.spawnedList)) .. " units")
+		for i, unit in pairs(self.spawnedList) do
+			if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
+				if unit:GetUnitName() ~= "custom_npc_dota_roshan" and self.autopilotList[unit] == 0 then
+					ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
+					ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-5700,-5200,0), Queue = true} )
+					self.autopilotList[unit] = 1
+				end
 			end
 		end
 	end
@@ -542,8 +505,24 @@ function CLet4Def:AutoPilotDefend(enemy)
 	end
 end
 
+function CLet4Def:WakeUp(unit)
+	-- wake dire units
+	if IsValidEntity(unit) and unit:HasModifier("dire_weakness_modifier") then
+		unit:RemoveModifierByName("modifier_stunned")
+		unit:RemoveModifierByName("dire_weakness_modifier")
+		--print("Unfreezing " .. unit:GetUnitName())
+		EmitSoundOn("ui.shortwhoosh", unit)
+		MinimapEvent(DOTA_TEAM_BADGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y, DOTA_MINIMAP_EVENT_TEAMMATE_TELEPORTING, 1)
+		--MinimapEvent(DOTA_TEAM_GOODGUYS, unit, unit:GetAbsOrigin().x, unit:GetAbsOrigin().y,  DOTA_MINIMAP_EVENT_HINT_LOCATION, self.announcementFrequency)
+		local effect_wake = ParticleManager:CreateParticle("particles/econ/items/oracle/oracle_ti10_immortal/oracle_ti10_immortal_purifyingflames_head_outline.vpcf", PATTACH_WORLDORIGIN, unit)
+        ParticleManager:SetParticleControl(effect_wake,0,unit:GetAbsOrigin())
+        ParticleManager:ReleaseParticleIndex(effect_wake)
+		table.insert(self.spawnedList, unit)
+	end
+end
+
 function AutoPilotAttackWait()
-	local wait = RandomInt(120, 180)
+	local wait = RandomInt(10, 30)
 	return wait
 end
 
@@ -563,6 +542,7 @@ function MaxAbilities( hero )
 		end
     end
 end
+
 
 function IncrementalModelScale(unit, scaleDif, duration)
 	for i = 1,10*duration do

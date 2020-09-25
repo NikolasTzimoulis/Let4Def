@@ -15,9 +15,9 @@
 
 .SwitchContainer
 {
-    width: 100px;
+    width: 180px;
 	height: 30px;
 	margin-left: 10px;
-	margin-right: 10px;
+	margin-right: 0px;
 	margin-top: 5px;
 }
