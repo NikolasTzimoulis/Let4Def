@@ -146,7 +146,13 @@ function CLet4Def:OnThink()
 		end
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
-		CreateHTTPRequest("GET","http://tzimoulis.eu/dota_let4def/"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)).."vs"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)).."/"..tostring(math.floor(GameRules:GetDOTATime(false, false)/60))):Send(nil)		
+		local winString = ""
+		if self.winners == DOTA_TEAM_GOODGUYS then
+			winString = "/def"
+		elseif self.winners == DOTA_TEAM_BADGUYS then	
+			winString = "/atk"
+		end
+		CreateHTTPRequest("GET","http://tzimoulis.eu/dota_let4def/"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)).."vs"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)).."/"..tostring(math.floor(GameRules:GetDOTATime(false, false)/60))..winString):Send(nil)		
 		return nil
 	end
 	return 1
