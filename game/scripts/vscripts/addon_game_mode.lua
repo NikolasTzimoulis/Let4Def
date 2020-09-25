@@ -26,7 +26,7 @@ end
 function CLet4Def:InitGameMode()
 	--print("Starting Let 4 Def...")
 	-- game balance parameters
-	self.timeLimitBase = 20*60 -- 20 minutes game length
+	self.timeLimitBase = 15*60 -- game length
 	self.radiantRespawnMultiplier = 2 -- multiplied with the hero's level to get the respawn timer for radiant
 	self.announcementFrequency = 5 --announcements cannot be made more frequently than this
 	self.autoGatherInterval = 30
@@ -44,6 +44,8 @@ function CLet4Def:InitGameMode()
 	self.roshTarget = nil
 	self.radiantPlayerCount = 4
 	self.direPlayerCount = 1
+	self.missingRadiant = 0
+	self.missingDire = 0
 	self.totalPlayerCount = self.radiantPlayerCount + self.direPlayerCount
 	self.lastHurtAnnouncement = -math.huge
 	self.goldMultiplierDire = self.radiantPlayerCount
@@ -51,7 +53,7 @@ function CLet4Def:InitGameMode()
 	dummy:FindAbilityByName("dummy_passive"):SetLevel(1)
 	self.modifiers = dummy:FindAbilityByName("modifier_collection")
 	self.winners = nil
-	self.botCheck = false
+	self.preCheck = false
 	self.autopilot = true
 	self.autopilotList = {}
 	-- base rules	
@@ -66,7 +68,7 @@ function CLet4Def:InitGameMode()
 	GameRules:GetGameModeEntity():SetCustomBuybackCostEnabled(true)
 	GameRules:GetGameModeEntity():SetFreeCourierModeEnabled(true)
 	GameRules:GetGameModeEntity():SetUseDefaultDOTARuneSpawnLogic(true)
-	GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
+	--GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
 	GameRules:SetUseBaseGoldBountyOnHeroes( false )
 	-- create a filter to change gold bounty awards on the fly
 	GameRules:GetGameModeEntity():SetModifyGoldFilter( Dynamic_Wrap( CLet4Def, "FilterGold" ), self )
@@ -90,9 +92,12 @@ function CLet4Def:OnThink()
 			GameRules:MakeTeamLose(DOTA_TEAM_BADGUYS)
 		end
 	end
-	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and self.botCheck == false then
-		self:SpawnBots()
-		self.botCheck = true
+	if GameRules:State_Get() == DOTA_GAMERULES_STATE_PRE_GAME and self.preCheck == false then
+		self.missingRadiant = self.radiantPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
+		self.missingDire = self.direPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
+		--self:SpawnBots()
+		self:Balance()
+		self.preCheck = true
     end
 	if GameRules:State_Get() == DOTA_GAMERULES_STATE_GAME_IN_PROGRESS and self.secondsPassed == nil then
 		-- activate once per second think function
@@ -123,7 +128,7 @@ function CLet4Def:OnThink()
 		self:WakeUp(self.roshan)
 			
 		--remove backdoor protection
-		 GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
+		GameRules:GetGameModeEntity():SetTowerBackdoorProtectionEnabled(false)
 		local allEntities = Entities:FindAllInSphere(Vector(0,0,0), 10000)
 		for i=1, table.getn(allEntities) do
 			if IsValidEntity(allEntities[i]) and allEntities[i].HasAbility then
@@ -138,6 +143,7 @@ function CLet4Def:OnThink()
 		end
 		
 	elseif GameRules:State_Get() >= DOTA_GAMERULES_STATE_POST_GAME then
+		CreateHTTPRequest("GET","http://tzimoulis.eu/dota_let4def/"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)).."vs"..tostring(PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)).."/"..tostring(math.floor(GameRules:GetDOTATime(false, false)/60))):Send(nil)		
 		return nil
 	end
 	return 1
@@ -193,7 +199,7 @@ function CLet4Def:DoOncePerSecond()
 	
 	
 	-- roshan bodyguard logic
-	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() then
+	if IsValidEntity(self.roshan) and IsValidEntity(self.king) and self.roshan:FindAbilityByName("roshan_slam"):IsCooldownReady() and self.missingDire == 0 then
 		--print(self.roshTarget)
 		if CalcDistanceBetweenEntityOBB(self.roshan, self.king) > self.autoDefendDistance then
 			-- leash to dire hero
@@ -241,7 +247,7 @@ function CLet4Def:OnNPCSpawned( event )
 				IncrementalModelScale(spawnedUnit, 0.4, 1)
 				-- remember dire hero since we need this information elsewhere
 				self.king = spawnedUnit	
-				-- Get dire hero to level 25
+				-- Get dire hero to max level
 				Timers:CreateTimer( 0.1, function()
 					MaxAbilities(spawnedUnit)
 					return nil
@@ -263,6 +269,9 @@ function CLet4Def:OnNPCSpawned( event )
 				spawnedUnit:SetModifierStackCount("gold_multiplier", spawnedUnit, self.goldMultiplierDire)
 				-- change his colour to white
 				PlayerResource:SetCustomPlayerColor(spawnedUnit:GetPlayerID(), 255, 255, 255)
+				if PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS) == 0 then
+					self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "super_weak", {duration=-1})
+				end
 				-- jungle fix
 				if self.secondsPassed ~= nil and self.secondsPassed > 30 then
 					SendToServerConsole("sv_cheats_1;dota_spawn_neutrals;sv_cheats 0")					
@@ -292,10 +301,18 @@ function CLet4Def:OnNPCSpawned( event )
 			-- dire creep effects
 			spawnedUnit:AddNewModifier(spawnedUnit, nil, "modifier_stunned", {duration = -1}) 
 			self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "dire_weakness_modifier", {duration=-1} )
-			spawnedUnit:SetHealth(1)
-			spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
-			spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplierRadiant)
-			spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.goldMultiplierRadiant)
+			if self.missingDire == 0 then
+				spawnedUnit:SetHealth(spawnedUnit:GetHealth()/100)
+				spawnedUnit:SetDeathXP(spawnedUnit:GetDeathXP()*self.xpMultiplier)
+				spawnedUnit:SetMinimumGoldBounty(spawnedUnit:GetMinimumGoldBounty()*self.goldMultiplierRadiant)
+				spawnedUnit:SetMaximumGoldBounty(spawnedUnit:GetMaximumGoldBounty()*self.goldMultiplierRadiant)
+			else
+				self:WakeUp(spawnedUnit)
+			end
+			-- super damage amplification if radiant has no players
+			if PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS) == 0 then
+				self.modifiers:ApplyDataDrivenModifier( spawnedUnit, spawnedUnit, "super_weak", {duration=-1})
+			end
 		end
 		
 		-- Give full control of neutral units to dire
@@ -357,9 +374,12 @@ function CLet4Def:OnEntityKilled( event )
 			-- give dire hero his modifiers back
 			if killedTeam == DOTA_TEAM_BADGUYS then
 				Timers:CreateTimer(5.1, function()
-				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1})
-				self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
-				self.king:SetModifierStackCount("gold_multiplier", self.king, self.goldMultiplierDire)
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "maxcreep_modifier", {duration=-1})
+					self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "gold_multiplier", {duration=-1})
+					self.king:SetModifierStackCount("gold_multiplier", self.king, self.goldMultiplierDire)
+					if PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS) == 0 then
+						self.modifiers:ApplyDataDrivenModifier( self.king, self.king, "super_weak", {duration=-1})						
+					end
 				end)
 			end
 		end
@@ -417,11 +437,29 @@ function CLet4Def:OnEntityHurt( event )
 		self:WakeUp(hurtUnit)
 	end
 	
+	--extra effects when there are zero radiant players
+	if hurtUnit:GetTeam() == DOTA_TEAM_GOODGUYS and PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS) == 0 then
+		if hurtUnit:FindAbilityByName("sandking_caustic_finale") == nil then
+			local abil = hurtUnit:AddAbility("sandking_caustic_finale")
+			abil:SetLevel(abil:GetMaxLevel())
+			local abil = hurtUnit:AddAbility("huskar_berserkers_blood")
+			abil:SetLevel(abil:GetMaxLevel())
+			--local abil = hurtUnit:AddAbility("slark_shadow_dance")
+			--abil:SetLevel(abil:GetMaxLevel())
+			--local abil = hurtUnit:AddAbility("shredder_reactive_armor")
+			--abil:SetLevel(abil:GetMaxLevel())
+		end
+		if hurtUnit:GetHealth() < hurtUnit:GetMaxHealth() / 10 then
+			hurtUnit:AddNewModifier(hurtUnit, nil, "modifier_glyph_reset", {duration = -1}) 
+			ExecuteOrderFromTable({UnitIndex = hurtUnit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_GLYPH, Queue = false})			
+		end
+	end
+	
 end
 
 function CLet4Def:giveDireControl(unit)
-	if IsValidEntity(self.king) and IsValidEntity(unit) then
-		unit:SetTeam(DOTA_TEAM_BADGUYS)
+	if IsValidEntity(unit) and IsValidEntity(self.king) then
+		unit:SetTeam(DOTA_TEAM_BADGUYS)		
 		unit:SetOwner(self.king)
 		if unit:GetUnitName() ~= "custom_npc_dota_roshan" then
 			unit:SetControllableByPlayer(self.king:GetOwner():GetPlayerID(), true)					
@@ -475,7 +513,7 @@ function CLet4Def:AutopilotGather()
 	--print("Gathering " .. tostring(table.getn(self.spawnedList)) .. " units")
 	for i, unit in pairs(self.spawnedList) do
 		if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
-			if string.find(unit:GetUnitName(), "courier") == nil and unit:GetUnitName() ~= "custom_npc_dota_roshan" and not self.autopilotList[unit] then
+			if string.find(unit:GetUnitName(), "courier") == nil and (self.missingDire > 0 or unit:GetUnitName() ~= "custom_npc_dota_roshan") and not self.autopilotList[unit] then
 				ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_POSITION, Position = gatherLocation, Queue = false} )
 				self.autopilotList[unit] = 0
 			end
@@ -503,10 +541,11 @@ function CLet4Def:AutoPilotAttack()
 		--print("Attacking with " .. tostring(table.getn(self.spawnedList)) .. " units")
 		for i, unit in pairs(self.spawnedList) do
 			if IsValidEntity(unit) and unit:GetTeamNumber() ~= DOTA_TEAM_GOODGUYS then
-				if unit:GetUnitName() ~= "custom_npc_dota_roshan" and self.autopilotList[unit] == 0 then
+				if (self.missingDire > 0  or unit:GetUnitName() ~= "custom_npc_dota_roshan") and self.autopilotList[unit] == 0 then
 					ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = pivotLocation, Queue = false} )
 					ExecuteOrderFromTable( {UnitIndex=unit:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_ATTACK_MOVE, Position = Vector(-5700,-5200,0), Queue = true} )
 					self.autopilotList[unit] = 1
+					--print(unit:GetUnitName())
 				end
 			end
 		end
@@ -540,29 +579,17 @@ end
 
 function CLet4Def:SpawnBots() 
 	self.botHeroes = {'npc_dota_hero_bane', 'npc_dota_hero_bounty_hunter', 'npc_dota_hero_bloodseeker', 'npc_dota_hero_bristleback', 'npc_dota_hero_chaos_knight', 'npc_dota_hero_crystal_maiden', 'npc_dota_hero_dazzle', 'npc_dota_hero_death_prophet', 'npc_dota_hero_drow_ranger', 'npc_dota_hero_earthshaker', 'npc_dota_hero_jakiro', 'npc_dota_hero_kunkka', 'npc_dota_hero_lina', 'npc_dota_hero_lion', 'npc_dota_hero_luna', 'npc_dota_hero_necrolyte', 'npc_dota_hero_omniknight', 'npc_dota_hero_oracle', 'npc_dota_hero_phantom_assassin', 'npc_dota_hero_pudge', 'npc_dota_hero_sand_king', 'npc_dota_hero_nevermore', 'npc_dota_hero_skywrath_mage', 'npc_dota_hero_sniper', 'npc_dota_hero_sven', 'npc_dota_hero_tiny', 'npc_dota_hero_viper', 'npc_dota_hero_warlock', 'npc_dota_hero_windrunner', 'npc_dota_hero_zuus'}
-	missingRadiant = self.radiantPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_GOODGUYS)
-	missingDire = self.direPlayerCount - PlayerResource:GetPlayerCountForTeam(DOTA_TEAM_BADGUYS)
 	Tutorial:StartTutorialMode()	
 	
-	if missingDire > 0 then
+	if self.missingDire > 0 then
 		local heroNumber = RandomInt(1, #self.botHeroes)	
-		--Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", false)
-		local bot = GameRules:AddBotPlayerWithEntityScript(self.botHeroes[heroNumber], string.sub(self.botHeroes[heroNumber], 15), DOTA_TEAM_BADGUYS, "", false)
-		Timers:CreateTimer(1, function()	
-			bot:SetBotDifficulty(4)
-			FindClearSpaceForUnit(bot, Vector(6900, 6400, 400), false)
-		end)
+		Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", false)
 		table.remove(self.botHeroes, heroNumber)
 	end
 	
-	for _ = 1, missingRadiant do
+	for _ = 1, self.missingRadiant do
 		local heroNumber = RandomInt(1, #self.botHeroes)	
-		--Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", true)
-		local bot = GameRules:AddBotPlayerWithEntityScript(self.botHeroes[heroNumber], string.sub(self.botHeroes[heroNumber], 15), DOTA_TEAM_GOODGUYS, "", false)
-		Timers:CreateTimer(1, function()	
-			bot:SetBotDifficulty(4)
-			FindClearSpaceForUnit(bot, Vector(-6900, -6400, 400), false)
-		end)
+		Tutorial:AddBot(self.botHeroes[heroNumber], "mid", "unfair", true)
 		table.remove(self.botHeroes, heroNumber)
 	end
 	
@@ -570,10 +597,31 @@ function CLet4Def:SpawnBots()
 		GameRules:GetGameModeEntity():SetBotThinkingEnabled(true)
 		GameRules:GetGameModeEntity():SetBotsInLateGame(true)
 		GameRules:GetGameModeEntity():SetBotsAlwaysPushWithHuman(true)
-		if missingDire == 0 then
+		if self.missingDire == 0 then
 			GameRules:GetGameModeEntity():SetBotsMaxPushTier(0)
 		end
 	end)
+end
+
+function CLet4Def:Balance()
+	Timers:CreateTimer(5, function()
+		local heroes = HeroList:GetAllHeroes()
+		for _,hero in pairs(heroes) do 
+			if hero:GetTeamNumber() == DOTA_TEAM_GOODGUYS and hero:IsRealHero() and not hero:IsClone() then
+				for _ = 1, 8 * self.missingRadiant do
+					hero:HeroLevelUp(false)
+				end
+			end		
+		end	
+	end)
+	
+	if self.missingDire > 0 then
+		--Tutorial:AddBot("npc_dota_hero_wisp", "mid", "passive", false)
+		local fakeHero = GameRules:AddBotPlayerWithEntityScript("npc_dota_hero_wisp", "KANENAS", DOTA_TEAM_BADGUYS, "", false)
+		Timers:CreateTimer(1, function()
+			fakeHero:AddNewModifier(hero, nil, "modifier_invulnerable", {duration = -1}) 
+		end)
+	end
 end
 
 function AutoPilotAttackWait()

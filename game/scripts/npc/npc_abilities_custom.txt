@@ -80,6 +80,14 @@
 			{
 				"TextureName"	"gold_multiplier"
 			}
+			"super_weak"
+			{
+				"Passive"	"1"
+				"Properties"
+				{
+					"MODIFIER_PROPERTY_INCOMING_DAMAGE_PERCENTAGE"	"200"
+				}
+			}
 
 		}
 	}

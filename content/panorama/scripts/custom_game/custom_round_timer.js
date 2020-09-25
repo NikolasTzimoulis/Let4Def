@@ -1,5 +1,5 @@
 "use strict";
-var TimeLimit     = 20*60;
+var TimeLimit     = 15*60;
 
 var humanTime = function(time) {
     time = Math.floor(time);
